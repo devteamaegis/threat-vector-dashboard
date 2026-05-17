@@ -507,6 +507,162 @@ function KeyboardShortcutsModal({ onClose }: { onClose: () => void }) {
   )
 }
 
+// ─── Submit Tip Modal ─────────────────────────────────────────────────────────
+
+type TipSubmitState =
+  | { status: 'idle' }
+  | { status: 'loading' }
+  | { status: 'success'; callId: string }
+  | { status: 'error'; message: string }
+
+const RAILWAY_BASE = 'https://threat-vector-production.up.railway.app'
+
+function SubmitTipModal({ onClose }: { onClose: () => void }) {
+  const [school, setSchool]       = useState('')
+  const [category, setCategory]   = useState('other')
+  const [tipText, setTipText]     = useState('')
+  const [state, setState]         = useState<TipSubmitState>({ status: 'idle' })
+
+  async function handleSubmit(e: React.FormEvent) {
+    e.preventDefault()
+    setState({ status: 'loading' })
+    try {
+      const res = await fetch(`${RAILWAY_BASE}/api/tip/submit`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          transcript:   tipText.trim(),
+          school_name:  school.trim(),
+          category,
+          tip_source:   'web_form',
+        }),
+      })
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({})) as { error?: string }
+        setState({ status: 'error', message: err.error ?? `HTTP ${res.status}` })
+        return
+      }
+      const data = await res.json() as { call_id: string }
+      setState({ status: 'success', callId: data.call_id })
+    } catch (err) {
+      setState({ status: 'error', message: String(err) })
+    }
+  }
+
+  const inputCls = [
+    'w-full px-3 py-2 rounded-lg text-[13px] outline-none transition-colors',
+    'border border-[var(--border)] bg-[var(--surface-2)] text-[var(--foreground)]',
+    'placeholder:text-[var(--muted-2)] focus:border-[var(--border-strong)]',
+  ].join(' ')
+
+  return (
+    <div
+      className="fixed inset-0 z-[200] flex items-center justify-center p-4"
+      style={{ background: 'rgba(0,0,0,0.55)', backdropFilter: 'blur(4px)' }}
+      onClick={e => { if (e.target === e.currentTarget) onClose() }}
+    >
+      <div
+        className="w-full max-w-md rounded-2xl overflow-hidden shadow-2xl"
+        style={{
+          background: 'var(--surface)',
+          border: '1px solid var(--border)',
+          animation: 'fadeInScale 0.18s ease-out both',
+        }}
+      >
+        {/* Header */}
+        <div className="flex items-center justify-between px-5 py-4" style={{ borderBottom: '1px solid var(--border)' }}>
+          <div>
+            <div className="text-[13px] font-black tracking-wide text-[var(--foreground)]">Submit a Tip</div>
+            <div className="text-[10px] text-[var(--muted)] mt-0.5">Anonymous — processed by Kairos AI</div>
+          </div>
+          <button onClick={onClose} className="w-7 h-7 flex items-center justify-center rounded-full text-[var(--muted)] hover:text-[var(--foreground)] hover:bg-[var(--surface-2)] transition-colors text-lg leading-none">×</button>
+        </div>
+
+        {state.status === 'success' ? (
+          <div className="px-5 py-8 flex flex-col items-center gap-3 text-center">
+            <div className="text-3xl">✓</div>
+            <div className="text-[13px] font-bold text-emerald-400">Tip received</div>
+            <div className="text-[11px] text-[var(--muted)]">ID: <span className="font-mono text-[var(--foreground-2)]">{(state as { status: 'success'; callId: string }).callId}</span></div>
+            <div className="text-[11px] text-[var(--muted)]">The Kairos AI pipeline is now analysing your submission.</div>
+            <button onClick={onClose} className="mt-2 px-5 py-2 rounded-lg text-[11px] font-bold uppercase tracking-widest text-emerald-400 border border-emerald-500/40 bg-emerald-950/20 hover:bg-emerald-950/40 transition-colors">Close</button>
+          </div>
+        ) : (
+          <form onSubmit={handleSubmit} className="px-5 py-5 flex flex-col gap-4">
+            {/* School */}
+            <div>
+              <label className="block text-[10px] font-bold uppercase tracking-[0.1em] text-[var(--muted)] mb-1.5">School Name</label>
+              <input
+                type="text"
+                required
+                placeholder="e.g. Westbrook Academy"
+                value={school}
+                onChange={e => setSchool(e.target.value)}
+                className={inputCls}
+              />
+            </div>
+
+            {/* Category */}
+            <div>
+              <label className="block text-[10px] font-bold uppercase tracking-[0.1em] text-[var(--muted)] mb-1.5">Category</label>
+              <select
+                value={category}
+                onChange={e => setCategory(e.target.value)}
+                className={inputCls}
+              >
+                <option value="weapon">Weapon</option>
+                <option value="bullying">Bullying</option>
+                <option value="drugs">Drugs</option>
+                <option value="threat">Threat</option>
+                <option value="self_harm">Self Harm</option>
+                <option value="vandalism">Vandalism</option>
+                <option value="harassment">Harassment</option>
+                <option value="other">Other</option>
+              </select>
+            </div>
+
+            {/* Description */}
+            <div>
+              <label className="block text-[10px] font-bold uppercase tracking-[0.1em] text-[var(--muted)] mb-1.5">Tip Description</label>
+              <textarea
+                required
+                rows={5}
+                placeholder="Describe what you saw or heard. Do not include names."
+                value={tipText}
+                onChange={e => setTipText(e.target.value)}
+                className={inputCls}
+                style={{ resize: 'vertical' }}
+              />
+            </div>
+
+            {/* Error */}
+            {state.status === 'error' && (
+              <div className="rounded-lg px-3 py-2.5 text-[12px] text-red-400" style={{ background: 'rgba(239,68,68,0.07)', border: '1px solid rgba(239,68,68,0.25)' }}>
+                {(state as { status: 'error'; message: string }).message}
+              </div>
+            )}
+
+            {/* Actions */}
+            <div className="flex items-center justify-end gap-2 pt-1">
+              <button type="button" onClick={onClose} className="px-4 py-2 rounded-lg text-[11px] font-semibold text-[var(--muted)] hover:text-[var(--foreground)] transition-colors">Cancel</button>
+              <button
+                type="submit"
+                disabled={state.status === 'loading'}
+                className={`px-5 py-2 rounded-lg text-[11px] font-bold uppercase tracking-widest border transition-all ${
+                  state.status === 'loading'
+                    ? 'border-[var(--border)] text-[var(--muted)] cursor-not-allowed'
+                    : 'border-emerald-500/60 text-emerald-400 bg-emerald-950/20 hover:bg-emerald-950/40 hover:border-emerald-500'
+                }`}
+              >
+                {state.status === 'loading' ? 'Submitting…' : 'Submit Anonymously'}
+              </button>
+            </div>
+          </form>
+        )}
+      </div>
+    </div>
+  )
+}
+
 function LiveCallOverlay({ call }: { call: { callId: string, transcript: string, probability: number, threatLevel: number, school: string, features: string[] } }) {
   const pct = Math.min(call.probability, 100)
   const barColor = pct > 50 ? '#ef4444' : pct > 15 ? '#f97316' : '#22c55e'
@@ -869,6 +1025,7 @@ export default function Dashboard() {
   const [showPricing, setShowPricing] = useState(false)
   const [showShortcuts, setShowShortcuts] = useState(false)
   const [dismissedAlert, setDismissedAlert] = useState(false)
+  const [showTipModal, setShowTipModal] = useState(false)
 
   const [liveCall, setLiveCall] = useState<{callId: string, transcript: string, probability: number, threatLevel: number, school: string, features: string[]} | null>(null)
 
@@ -1104,6 +1261,7 @@ export default function Dashboard() {
         <ImpactCard show={showImpact} onDismiss={() => setShowImpact(false)} />
         {showPricing && <PricingModal onClose={() => setShowPricing(false)} />}
         {showShortcuts && <KeyboardShortcutsModal onClose={() => setShowShortcuts(false)} />}
+        {showTipModal && <SubmitTipModal onClose={() => setShowTipModal(false)} />}
 
         {/* Ambient glow */}
         <div className="pointer-events-none fixed inset-0 z-0" style={{
@@ -1153,6 +1311,10 @@ export default function Dashboard() {
           <ThemeToggle />
           <button onClick={() => setShowShortcuts(true)} className="w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-bold text-[var(--muted)] border border-[var(--border)] hover:text-[var(--foreground)] hover:bg-[var(--surface-2)] transition-colors">?</button>
           <LiveCounter />
+            <button onClick={() => setShowTipModal(true)}
+              className="flex items-center gap-1.5 text-[10px] font-semibold uppercase px-3 py-1.5 rounded-md border transition-all tracking-widest border-emerald-500/60 text-emerald-400 bg-emerald-950/20 hover:bg-emerald-950/40 hover:border-emerald-500">
+              <span>+</span>Submit Tip
+            </button>
             <button onClick={runDemo} disabled={demoRunning}
               className={`flex items-center gap-1.5 text-[10px] font-semibold uppercase px-3 py-1.5 rounded-md border transition-all tracking-widest ${
                 demoRunning
