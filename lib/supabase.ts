@@ -32,4 +32,11 @@ export type Tip = {
   location_detail?: string | null
   subject_description?: string | null
   call_duration_seconds?: number | null
+  caller_language?: string | null
+  multilingual_call?: boolean | null
+  english_translation?: string | null
+  gemini_level?: number | null
+  gemini_reasoning?: string | null
+  consensus?: boolean | null
+  s3_archive_uri?: string | null
 }

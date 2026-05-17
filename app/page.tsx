@@ -40,26 +40,29 @@ const ESCALATION_COLOR: Record<string, string> = {
 }
 
 const SPONSORS = [
-  { name: 'Anthropic',   role: 'Claude AI',        color: '#f97316' },
-  { name: 'AgentPhone',  role: 'Voice Calls',       color: '#06b6d4' },
-  { name: 'Twilio',      role: 'SMS Alerts',        color: '#ef4444' },
-  { name: 'AgentMail',   role: 'Email Briefs',       color: '#8b5cf6' },
-  { name: 'Supabase',    role: 'Realtime DB',        color: '#10b981' },
-  { name: 'Supermemory', role: 'Pattern Memory',     color: '#f59e0b' },
-  { name: 'Moss',        role: 'Semantic Search',    color: '#6366f1' },
-  { name: 'Stripe',      role: 'District Billing',   color: '#ec4899' },
-  { name: 'Sponge',      role: 'Micropayments',      color: '#14b8a6' },
+  { name: 'Anthropic',       role: 'Claude AI',          color: '#f97316' },
+  { name: 'Google DeepMind', role: 'Gemini Live',        color: '#4285f4' },
+  { name: 'AgentPhone',      role: 'Voice Calls',        color: '#06b6d4' },
+  { name: 'AgentMail',       role: 'Email Briefs',       color: '#8b5cf6' },
+  { name: 'Supermemory',     role: 'Pattern Memory',     color: '#f59e0b' },
+  { name: 'Moss',            role: 'Semantic Search',    color: '#6366f1' },
+  { name: 'Stripe',          role: 'District Billing',   color: '#ec4899' },
+  { name: 'Sponge',          role: 'Micropayments',      color: '#14b8a6' },
+  { name: 'AWS',             role: 'Call Archive',       color: '#ff9900' },
+  { name: 'Supabase',        role: 'Realtime DB',        color: '#10b981' },
 ]
 
 const PIPELINE_STEPS = [
-  { id: 'moss',      label: 'Moss',      icon: '🔍', desc: 'Semantic context',   ms: 340  },
-  { id: 'claude',    label: 'Claude',    icon: '🧠', desc: 'AI + emotion scan',  ms: 2100 },
-  { id: 'osint',     label: 'OSINT',     icon: '🌐', desc: 'Browser intel',      ms: 4800 },
-  { id: 'supabase',  label: 'Supabase',  icon: '🗄️', desc: 'Log to database',    ms: 5100 },
-  { id: 'twilio',    label: 'Twilio',    icon: '📱', desc: 'SMS to principal',   ms: 5600 },
-  { id: 'agentmail', label: 'AgentMail', icon: '✉️', desc: 'Email brief',        ms: 6200 },
-  { id: 'stripe',    label: 'Stripe',    icon: '💳', desc: 'Bill district',      ms: 6700 },
-  { id: 'sponge',    label: 'Sponge',    icon: '💧', desc: 'Micropayments',      ms: 7100 },
+  { id: 'gemini_live', label: 'Gemini Live', icon: '🌐', desc: 'Multilingual detect', ms: 280  },
+  { id: 'moss',        label: 'Moss',        icon: '🔍', desc: 'Semantic context',     ms: 620  },
+  { id: 'claude',      label: 'Claude',      icon: '🧠', desc: 'Threat classify',      ms: 2400 },
+  { id: 'gemini',      label: 'Gemini',      icon: '✦',  desc: 'Consensus verify',     ms: 3100 },
+  { id: 'supabase',    label: 'Supabase',    icon: '🗄️', desc: 'Log to dashboard',     ms: 3400 },
+  { id: 'aws',         label: 'AWS S3',      icon: '☁️', desc: 'Archive transcript',   ms: 3700 },
+  { id: 'memory',      label: 'Memory',      icon: '🧬', desc: 'Pattern storage',      ms: 4100 },
+  { id: 'twilio',      label: 'Twilio',      icon: '📱', desc: 'SMS to principal',     ms: 4600 },
+  { id: 'agentmail',   label: 'AgentMail',   icon: '✉️', desc: 'Email brief',          ms: 5200 },
+  { id: 'stripe',      label: 'Stripe',      icon: '💳', desc: 'Bill district',        ms: 5800 },
 ]
 
 // Demo: realistic anonymous call, no names/identifying info
@@ -93,6 +96,11 @@ function buildDemoTip(): Tip {
     key_facts: ['Student showing weapon photos to peers', 'Threats made over 2 weeks', 'Multiple student witnesses', 'Pattern of escalation', 'Next week as stated timeline'],
     timeline: 'this_week',
     call_duration_seconds: 42,
+    caller_language: 'English',
+    multilingual_call: false,
+    gemini_level: 5,
+    gemini_reasoning: 'Weapon photo evidence and escalating pattern strongly indicate imminent threat',
+    consensus: true,
     created_at: new Date().toISOString(),
   }
 }
@@ -278,6 +286,115 @@ function ImpactCard({ show, onDismiss }: { show: boolean; onDismiss: () => void 
   )
 }
 
+function PricingModal({ onClose }: { onClose: () => void }) {
+  return (
+    <div className="fixed inset-0 z-[200] flex items-center justify-center" onClick={onClose}>
+      <div className="absolute inset-0 bg-black/70 backdrop-blur-sm" />
+      <div className="relative z-10 rounded-2xl p-8 w-full max-w-sm"
+        style={{ background: 'rgba(8,9,14,0.99)', border: '1px solid rgba(255,255,255,0.08)' }}
+        onClick={e => e.stopPropagation()}>
+        <div className="text-[9px] font-bold uppercase tracking-[0.3em] text-slate-600 mb-6">District Pricing</div>
+        <div className="flex flex-col gap-3">
+          {[
+            { tier: 'Starter',  price: '$199/mo', schools: '1-5 schools',  tips: '500 tips/mo' },
+            { tier: 'District', price: '$499/mo', schools: '6-20 schools', tips: 'Unlimited tips', highlight: true },
+            { tier: 'State',    price: 'Custom',  schools: '20+ schools',  tips: 'White-label + API' },
+          ].map(p => (
+            <div key={p.tier} className={`rounded-lg p-4 ${p.highlight ? 'border border-cyan-500/30 bg-cyan-950/20' : 'border border-slate-800'}`}>
+              <div className="flex items-center justify-between mb-1">
+                <span className={`text-sm font-bold ${p.highlight ? 'text-cyan-400' : 'text-slate-300'}`}>{p.tier}</span>
+                <span className={`text-sm font-black tabular-nums ${p.highlight ? 'text-white' : 'text-slate-400'}`}>{p.price}</span>
+              </div>
+              <div className="text-[10px] text-slate-600">{p.schools} · {p.tips}</div>
+            </div>
+          ))}
+        </div>
+        <div className="mt-4 text-[9px] text-slate-700 text-center">Powered by Stripe · Per-tip billing available</div>
+        <button onClick={onClose} className="mt-4 w-full py-2 rounded-lg text-[11px] font-semibold text-slate-400 hover:text-white border border-slate-800 hover:border-slate-600 transition-colors">
+          Close
+        </button>
+      </div>
+    </div>
+  )
+}
+
+function IntegrationStatus() {
+  const [statuses, setStatuses] = useState<Record<string, boolean>>({})
+  const integrations = [
+    { name: 'Anthropic', key: 'anthropic' },
+    { name: 'Gemini', key: 'gemini' },
+    { name: 'AgentPhone', key: 'agentphone' },
+    { name: 'AgentMail', key: 'agentmail' },
+    { name: 'Supermemory', key: 'supermemory' },
+    { name: 'Moss', key: 'moss' },
+    { name: 'Stripe', key: 'stripe' },
+    { name: 'Sponge', key: 'sponge' },
+    { name: 'AWS S3', key: 'aws' },
+    { name: 'Supabase', key: 'supabase' },
+  ]
+
+  useEffect(() => {
+    let cancelled = false
+    fetch('/api/integrations')
+      .then(r => r.json())
+      .then(data => {
+        if (!cancelled) setStatuses(data.integrations ?? {})
+      })
+      .catch(() => {
+        if (!cancelled) setStatuses({})
+      })
+    return () => { cancelled = true }
+  }, [])
+
+  return (
+    <div className="rounded-lg p-3" style={{ background: 'rgba(255,255,255,0.015)', border: '1px solid rgba(255,255,255,0.04)' }}>
+      <div className="text-[9px] font-bold uppercase tracking-[0.2em] text-slate-600 mb-2">Integration Status</div>
+      <div className="grid grid-cols-2 gap-x-3 gap-y-1.5">
+        {integrations.map(item => {
+          const ready = Boolean(statuses[item.key])
+          return (
+            <div key={item.key} className="flex items-center gap-1.5 min-w-0">
+              <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${ready ? 'bg-green-500' : 'bg-slate-700'}`} />
+              <span className="text-[9px] text-slate-500 truncate">{item.name}</span>
+            </div>
+          )
+        })}
+      </div>
+    </div>
+  )
+}
+
+function CostTracker() {
+  const costs = [
+    { label: 'Gemini Live',  cost: 0.0008, color: 'text-blue-500' },
+    { label: 'Claude',       cost: 0.0210, color: 'text-orange-500' },
+    { label: 'Gemini Flash', cost: 0.0003, color: 'text-blue-400' },
+    { label: 'AgentMail',    cost: 0.0010, color: 'text-purple-500' },
+    { label: 'SMS (Twilio)', cost: 0.0075, color: 'text-red-500' },
+    { label: 'AWS S3',       cost: 0.0001, color: 'text-yellow-600' },
+  ]
+  const total = costs.reduce((s, c) => s + c.cost, 0)
+  return (
+    <div className="rounded-lg p-3" style={{ background: 'rgba(255,255,255,0.015)', border: '1px solid rgba(255,255,255,0.04)' }}>
+      <div className="flex items-center justify-between mb-2">
+        <span className="text-[9px] font-bold uppercase tracking-[0.2em] text-slate-600">Cost Per Tip</span>
+        <span className="text-[11px] font-black text-green-400 tabular-nums">${total.toFixed(4)}</span>
+      </div>
+      <div className="flex flex-col gap-1">
+        {costs.map(c => (
+          <div key={c.label} className="flex items-center justify-between">
+            <span className={`text-[9px] ${c.color}`}>{c.label}</span>
+            <span className="text-[9px] font-mono text-slate-600">${c.cost.toFixed(4)}</span>
+          </div>
+        ))}
+      </div>
+      <div className="mt-2 pt-2 border-t text-[9px] text-slate-700" style={{ borderColor: 'rgba(255,255,255,0.04)' }}>
+        District billed $0.15-0.35 per tip via Stripe · Sponge handles agent micropayments
+      </div>
+    </div>
+  )
+}
+
 // Tip row in feed
 function TipRow({ tip, allTips, onClick, fresh }: { tip: Tip; allTips: Tip[]; onClick: () => void; fresh?: boolean }) {
   const urgency = tip.urgency?.toLowerCase() ?? 'low'
@@ -305,6 +422,11 @@ function TipRow({ tip, allTips, onClick, fresh }: { tip: Tip; allTips: Tip[]; on
       <p className="text-[11px] text-slate-500 line-clamp-2 leading-relaxed">{tip.ai_summary ?? tip.description}</p>
       <div className="flex items-center gap-3 mt-1.5 flex-wrap">
         {tip.school_name && <span className="text-[10px] text-slate-600">📍 {tip.school_name}</span>}
+        {tip.multilingual_call && tip.caller_language && (
+          <span className="text-[9px] px-1.5 py-0.5 rounded bg-indigo-950/60 border border-indigo-800/30 text-indigo-400">
+            🌐 {tip.caller_language}
+          </span>
+        )}
         {tip.caller_emotion && (
           <span className={`text-[9px] font-medium ${EMOTION_COLOR[tip.caller_emotion] ?? 'text-slate-500'}`}>
             {tip.caller_emotion}
@@ -373,6 +495,36 @@ function TipDrawer({ tip, onClose }: { tip: Tip; onClose: () => void }) {
             <div className="rounded-lg p-4" style={{ background: 'rgba(6,182,212,0.04)', border: '1px solid rgba(6,182,212,0.12)' }}>
               <div className="text-[9px] font-bold uppercase tracking-[0.2em] text-cyan-700 mb-2">AI Assessment</div>
               <p className="text-sm text-slate-200 leading-relaxed">{tip.ai_summary}</p>
+            </div>
+          )}
+
+          {(tip.gemini_level != null || tip.consensus != null) && (
+            <div className="rounded-lg p-4" style={{ background: 'rgba(16,185,129,0.04)', border: '1px solid rgba(16,185,129,0.12)' }}>
+              <div className="text-[9px] font-bold uppercase tracking-[0.2em] text-emerald-700 mb-3">Multi-Model Consensus</div>
+              <div className="grid grid-cols-3 gap-3 text-xs">
+                <div>
+                  <div className="text-slate-700 mb-0.5 text-[9px]">Claude</div>
+                  <div className="text-orange-400 font-bold">{tip.ai_triage_score ?? '–'}/10</div>
+                </div>
+                <div>
+                  <div className="text-slate-700 mb-0.5 text-[9px]">Gemini</div>
+                  <div className="text-blue-400 font-bold">{tip.gemini_level != null ? `${tip.gemini_level}/5` : '–'}</div>
+                </div>
+                <div>
+                  <div className="text-slate-700 mb-0.5 text-[9px]">Consensus</div>
+                  <div className={`font-bold ${tip.consensus ? 'text-green-400' : 'text-yellow-500'}`}>
+                    {tip.consensus ? 'CONFIRMED' : 'DIVERGENT'}
+                  </div>
+                </div>
+              </div>
+              {tip.gemini_reasoning && (
+                <p className="text-[10px] text-slate-600 mt-2 italic">{tip.gemini_reasoning}</p>
+              )}
+              {tip.multilingual_call && tip.caller_language && (
+                <div className="mt-2 pt-2 border-t text-[10px] text-indigo-500" style={{ borderColor: 'rgba(255,255,255,0.05)' }}>
+                  🌐 Originally in {tip.caller_language} - auto-translated by Gemini Live
+                </div>
+              )}
             </div>
           )}
 
@@ -511,6 +663,7 @@ export default function Dashboard() {
   const [freshIds, setFreshIds]   = useState<Set<string>>(new Set())
   const [dateStr, setDateStr]     = useState('')
   const [orbMode, setOrbMode]     = useState<OrbMode>('thinking')
+  const [showPricing, setShowPricing] = useState(false)
 
   // Demo
   const [demoRunning, setDemoRunning]       = useState(false)
@@ -619,7 +772,7 @@ export default function Dashboard() {
     type()
   }, [demoRunning])
 
-  const filtered = filter === 'all' ? tips : tips.filter(t => t.urgency === filter || t.status === filter)
+  const filtered = filter === 'all' ? tips : tips.filter(t => t.urgency === filter || t.status === filter || t.category === filter)
   const critical = tips.filter(t => t.urgency === 'critical').length
   const newCount = tips.filter(t => t.status === 'new').length
   const resolved = tips.filter(t => t.status === 'resolved').length
@@ -655,6 +808,7 @@ export default function Dashboard() {
         {/* Overlays */}
         <IphoneNotif show={showNotif} onDismiss={() => setShowNotif(false)} />
         <ImpactCard show={showImpact} onDismiss={() => setShowImpact(false)} />
+        {showPricing && <PricingModal onClose={() => setShowPricing(false)} />}
 
         {/* Ambient glow */}
         <div className="pointer-events-none fixed inset-0 z-0" style={{
@@ -730,38 +884,47 @@ export default function Dashboard() {
             {/* Left panel */}
             <div className="hidden lg:flex flex-col justify-between py-6 px-5 w-48 shrink-0"
               style={{ borderRight: '1px solid rgba(255,255,255,0.04)' }}>
-              <div className="flex flex-col gap-7">
-                <Stat label="Total"    value={tips.length} sub="tips received" />
-                <Stat label="Critical" value={critical} red sub="need action" />
-                <Stat label="New"      value={newCount} sub="unreviewed" />
-                <Stat label="Resolved" value={resolved} sub="closed" />
+              <div className="flex flex-col gap-5">
+                <div className="flex items-center justify-between">
+                  <div className="text-[9px] font-semibold uppercase tracking-[0.2em] text-slate-700">Overview</div>
+                  <button onClick={() => setShowPricing(true)}
+                    className="px-2 py-1 rounded-md text-[9px] font-semibold uppercase tracking-wide text-cyan-400 border border-cyan-900/60 hover:border-cyan-700/70 hover:bg-cyan-950/20 transition-colors">
+                    Pricing
+                  </button>
+                </div>
+                <div className="flex gap-6 flex-wrap">
+                  <Stat label="Total"    value={tips.length} sub="tips received" />
+                  <Stat label="Critical" value={critical} red sub="need action" />
+                  <Stat label="New"      value={newCount} sub="unreviewed" />
+                  <Stat label="Resolved" value={resolved} sub="closed" />
+                </div>
+
+                <div className="flex flex-col gap-3 pt-5 border-t" style={{ borderColor: 'rgba(255,255,255,0.04)' }}>
+                  <div className="text-[9px] font-semibold uppercase tracking-[0.2em] text-slate-700">Metrics</div>
+                  {[
+                    { k: 'Avg Triage',  v: '8.2s',               c: 'text-cyan-500'  },
+                    { k: 'AI Accuracy', v: '94%',                 c: 'text-green-500' },
+                    { k: 'Anonymity',   v: '100%',                c: 'text-slate-300' },
+                    { k: 'Channels',    v: 'Voice · SMS · Email', c: 'text-slate-500' },
+                  ].map(m => (
+                    <div key={m.k}>
+                      <div className="text-[8px] text-slate-700 uppercase tracking-wide mb-0.5">{m.k}</div>
+                      <div className={`text-[11px] font-semibold ${m.c}`}>{m.v}</div>
+                    </div>
+                  ))}
+                </div>
               </div>
 
-              <div className="flex flex-col gap-3 pt-5 border-t" style={{ borderColor: 'rgba(255,255,255,0.04)' }}>
-                <div className="text-[9px] font-semibold uppercase tracking-[0.2em] text-slate-700">Metrics</div>
-                {[
-                  { k: 'Avg Triage',  v: '8.2s',               c: 'text-cyan-500'  },
-                  { k: 'AI Accuracy', v: '94%',                 c: 'text-green-500' },
-                  { k: 'Anonymity',   v: '100%',                c: 'text-slate-300' },
-                  { k: 'Channels',    v: 'Voice · SMS · Email', c: 'text-slate-500' },
-                ].map(m => (
-                  <div key={m.k}>
-                    <div className="text-[8px] text-slate-700 uppercase tracking-wide mb-0.5">{m.k}</div>
-                    <div className={`text-[11px] font-semibold ${m.c}`}>{m.v}</div>
-                  </div>
-                ))}
-              </div>
-
-              <div className="flex flex-col gap-1">
-                <div className="text-[8px] font-semibold uppercase tracking-[0.2em] text-slate-700 mb-1">Status</div>
-                <div className={`text-[11px] font-bold tracking-widest transition-colors duration-700 ${ORB_COLOR[orbMode]}`}>{ORB_LABEL[orbMode]}</div>
+              <div className="flex flex-col gap-3">
+                <IntegrationStatus />
+                <CostTracker />
               </div>
             </div>
 
             {/* Center: orb + overlay */}
             <div className="flex-1 flex flex-col items-center justify-center gap-3 min-w-0 px-4 py-4 overflow-hidden">
               {/* Orb */}
-              <div className="relative flex-shrink-0">
+              <div className="relative flex items-center justify-center w-full flex-shrink-0">
                 <div className="absolute inset-0 rounded-full blur-3xl pointer-events-none" style={{
                   background: orbMode === 'critical' ? 'rgba(239,68,68,0.4)' : orbMode === 'listening' ? 'rgba(249,115,22,0.3)' : 'rgba(6,182,212,0.25)',
                   transform: 'scale(1.4)', opacity: 0.18, transition: 'background 1s ease',
@@ -816,15 +979,16 @@ export default function Dashboard() {
                 </div>
                 <div className="flex flex-wrap gap-1">
                   {[
-                    { k: 'all', l: 'All' }, { k: 'critical', l: '🔴 Critical' }, { k: 'high', l: '🟠 High' },
-                    { k: 'new', l: 'New' }, { k: 'resolved', l: 'Resolved' },
+                    { k: 'all', l: 'All' },
+                    { k: 'critical', l: 'Critical', dot: 'text-red-400' },
+                    { k: 'high', l: 'High', dot: 'text-orange-400' },
+                    { k: 'weapon', l: 'Weapon' },
                   ].map(f => (
                     <button key={f.k} onClick={() => setFilter(f.k)}
-                      className={`text-[9px] font-medium uppercase px-2 py-0.5 rounded border transition-all tracking-wide ${
-                        filter === f.k
-                          ? 'border-cyan-800/60 bg-cyan-950/30 text-cyan-400'
-                          : 'border-transparent text-slate-700 hover:text-slate-500'
-                      }`}>{f.l}
+                      className={`px-3 py-1 rounded-full text-[10px] font-semibold uppercase tracking-wide transition-colors ${
+                        filter === f.k ? 'bg-white/10 text-white' : 'text-slate-600 hover:text-slate-400'
+                      }`}>
+                      {f.dot && <span className={f.dot}>• </span>}{f.l}
                     </button>
                   ))}
                 </div>
@@ -863,11 +1027,11 @@ export default function Dashboard() {
           style={{ borderTop: '1px solid rgba(255,255,255,0.04)', background: 'rgba(7,9,14,0.92)', height: 32 }}>
           <div className="flex items-center h-full" style={{ animation: 'ticker 35s linear infinite', width: 'max-content' }}>
             {[...SPONSORS, ...SPONSORS].map((s, i) => (
-              <div key={i} className="flex items-center gap-1.5 px-5 h-full border-r shrink-0"
+              <div key={i} className="flex items-center gap-1.5 px-6 h-full border-r shrink-0"
                 style={{ borderColor: 'rgba(255,255,255,0.04)' }}>
                 <div className="w-1 h-1 rounded-full" style={{ background: s.color }} />
-                <span className="text-[9px] font-semibold text-slate-500">{s.name}</span>
-                <span className="text-[8px] text-slate-700">{s.role}</span>
+                <span className="text-[11px] font-medium text-slate-500">{s.name}</span>
+                <span className="text-[11px] font-medium text-slate-700">{s.role}</span>
               </div>
             ))}
           </div>
