@@ -1,12 +1,15 @@
 import { createClient } from '@supabase/supabase-js'
 import { NextResponse } from 'next/server'
 
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
-)
+function getSupabase() {
+  return createClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY!
+  )
+}
 
 export async function GET() {
+  const supabase = getSupabase()
   const today = new Date().toISOString().slice(0, 10)
   const { data, error } = await supabase
     .from('attendance_logs')
@@ -20,6 +23,7 @@ export async function GET() {
 }
 
 export async function POST() {
+  const supabase = getSupabase()
   const apiKey = process.env.AGENTMAIL_API_KEY
   const inboxId = process.env.AGENTMAIL_INBOX_ID || process.env.AGENTMAIL_INBOX
   const recipient = process.env.ATTENDANCE_NOTIFY_EMAIL || process.env.SAFETY_OFFICER_EMAIL

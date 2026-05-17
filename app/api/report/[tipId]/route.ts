@@ -1,10 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
 
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-)
+function getSupabase() {
+  return createClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+  )
+}
 
 export async function GET(
   req: NextRequest,
@@ -12,6 +14,7 @@ export async function GET(
 ) {
   const { tipId } = await params
 
+  const supabase = getSupabase()
   const { data: tip, error } = await supabase
     .from('tips')
     .select('*')
