@@ -1,7 +1,6 @@
 'use client'
 
 import dynamic from 'next/dynamic'
-import Link from 'next/link'
 import { useEffect, useRef, useState, useCallback } from 'react'
 import { supabase, type Tip } from '@/lib/supabase'
 import type { OrbMode } from '@/components/ClaudiaOrb'
@@ -475,6 +474,58 @@ function DispatchBriefCard({ brief }: { brief: string }) {
   )
 }
 
+function TipRowSkeleton() {
+  return (
+    <div className="w-full p-3 rounded-lg" style={{ background: '#ffffff', border: '1px solid #e4e4e7' }}>
+      <div className="flex items-center justify-between gap-2 mb-2">
+        <div className="flex items-center gap-2">
+          <div className="w-4 h-4 rounded bg-zinc-100 animate-pulse" />
+          <div className="w-12 h-4 rounded bg-zinc-100 animate-pulse" />
+          <div className="w-16 h-3 rounded bg-zinc-100 animate-pulse" />
+        </div>
+        <div className="w-14 h-4 rounded bg-zinc-100 animate-pulse" />
+      </div>
+      <div className="w-full h-3 rounded bg-zinc-100 mb-1.5 animate-pulse" />
+      <div className="w-2/3 h-3 rounded bg-zinc-100 mb-3 animate-pulse" />
+      <div className="flex items-center gap-2">
+        <div className="w-20 h-3 rounded bg-zinc-100 animate-pulse" />
+        <div className="w-16 h-3 rounded bg-zinc-100 animate-pulse" />
+        <div className="w-16 h-3 rounded bg-zinc-100 animate-pulse" />
+      </div>
+    </div>
+  )
+}
+
+function KeyboardShortcutsModal({ onClose }: { onClose: () => void }) {
+  const shortcuts = [
+    { key: 'D', desc: 'Trigger demo call' },
+    { key: 'ESC', desc: 'Close tip drawer / modal' },
+    { key: '↑/↓', desc: 'Navigate between tips' },
+    { key: 'R', desc: 'Refresh tips list' },
+  ]
+  return (
+    <div className="fixed inset-0 z-[200] flex items-center justify-center" onClick={onClose}>
+      <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" />
+      <div className="relative z-10 rounded-xl p-6 w-full max-w-xs"
+        style={{ background: '#ffffff', border: '1px solid #e4e4e7', boxShadow: '0 8px 40px rgba(0,0,0,0.12)' }}
+        onClick={e => e.stopPropagation()}>
+        <div className="flex items-center justify-between mb-4">
+          <div className="text-[10px] font-bold uppercase tracking-[0.2em] text-zinc-500">Keyboard Shortcuts</div>
+          <button onClick={onClose} className="text-zinc-400 hover:text-zinc-800 transition-colors w-6 h-6 flex items-center justify-center rounded">✕</button>
+        </div>
+        <div className="flex flex-col gap-2.5">
+          {shortcuts.map(s => (
+            <div key={s.key} className="flex items-center justify-between">
+              <span className="text-xs text-zinc-600">{s.desc}</span>
+              <span className="px-2 py-1 rounded bg-zinc-100 border border-zinc-200 text-[10px] font-bold text-zinc-700 min-w-[28px] text-center">{s.key}</span>
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  )
+}
+
 function LiveCallOverlay({ call }: { call: { callId: string, transcript: string, probability: number, threatLevel: number, school: string, features: string[] } }) {
   const pct = Math.min(call.probability, 100)
   const barColor = pct > 50 ? '#ef4444' : pct > 15 ? '#f97316' : '#22c55e'
@@ -516,7 +567,7 @@ function LiveCallOverlay({ call }: { call: { callId: string, transcript: string,
 }
 
 // Tip drawer (detail panel)
-function TipDrawer({ tip, onClose }: { tip: Tip; onClose: () => void }) {
+function TipDrawer({ tip, onClose, onStatusChange }: { tip: Tip; onClose: () => void; onStatusChange?: (id: string, status: string) => void }) {
   const urgency = tip.urgency?.toLowerCase() ?? 'low'
   const icon    = CATEGORY_ICON[tip.category] ?? '📋'
   const score   = tip.ai_triage_score ?? tip.ai_score
@@ -727,6 +778,20 @@ function TipDrawer({ tip, onClose }: { tip: Tip; onClose: () => void }) {
           </div>
 
           <ScoreBar score={score} />
+          {onStatusChange && (tip.status === 'new' || tip.status === 'reviewing') && (
+            <div className="pt-4 border-t" style={{ borderColor: '#f0f0f0' }}>
+              <button
+                onClick={() => onStatusChange(tip.id, tip.status === 'new' ? 'reviewing' : 'dismissed')}
+                className={`w-full py-2.5 rounded-lg text-xs font-bold uppercase tracking-widest transition-colors ${
+                  tip.status === 'new'
+                    ? 'bg-yellow-50 text-yellow-600 border border-yellow-200 hover:bg-yellow-100'
+                    : 'bg-zinc-50 text-zinc-600 border border-zinc-200 hover:bg-zinc-100'
+                }`}
+              >
+                {tip.status === 'new' ? '✓ Mark Reviewing' : '✓ Mark Dismissed'}
+              </button>
+            </div>
+          )}
         </div>
       </div>
     </div>
@@ -775,6 +840,8 @@ export default function Dashboard() {
   const [dateStr, setDateStr]     = useState('')
   const [orbMode, setOrbMode]     = useState<OrbMode>('thinking')
   const [showPricing, setShowPricing] = useState(false)
+  const [showShortcuts, setShowShortcuts] = useState(false)
+  const [dismissedAlert, setDismissedAlert] = useState(false)
 
   const [liveCall, setLiveCall] = useState<{callId: string, transcript: string, probability: number, threatLevel: number, school: string, features: string[]} | null>(null)
 
@@ -830,9 +897,19 @@ export default function Dashboard() {
     if (loading) { setOrbMode('thinking'); return }
     if (demoRunning) return
     setOrbMode(tips.some(t => t.urgency === 'critical' && t.status === 'new') ? 'critical' : 'idle')
-  }, [loading, tips, demoRunning])
+  }, [loading, demoRunning, tips])
 
   const clearTimers = () => { demoRef.current.forEach(clearTimeout); demoRef.current = [] }
+
+  const updateTipStatus = useCallback(async (id: string, status: string) => {
+    try {
+      await fetch(`/api/tips/${id}`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ status }) })
+      setTips(prev => prev.map(t => t.id === id ? { ...t, status } : t))
+      if (selected?.id === id) setSelected(prev => prev ? { ...prev, status } : null)
+    } catch (err) {
+      console.error('Failed to update tip status', err)
+    }
+  }, [selected])
 
   const runDemo = useCallback(() => {
     if (demoRunning) return
@@ -840,6 +917,11 @@ export default function Dashboard() {
     setDemoRunning(true); setTranscript(''); setTranscriptFull(false)
     setPipelineStep(-1); setStepTimes({}); setWaveActive(true)
     setOrbMode('listening'); setCriticalFlash(false)
+    fetch('/api/demo-live-call', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({ school: 'Westbrook Academy', delay_ms: 180 })
+    }).catch(console.error)
     setShowNotif(false); setShowImpact(false)
     demoStart.current = Date.now()
 
@@ -903,6 +985,37 @@ export default function Dashboard() {
   const newCount = tips.filter(t => t.status === 'new').length
   const resolved = tips.filter(t => t.status === 'resolved').length
 
+  const crossSchoolAlert = tips.find(t => t.cross_school_alert && new Date(t.submitted_at ?? t.created_at).getTime() > Date.now() - 7 * 24 * 60 * 60 * 1000)?.cross_school_alert
+
+  // Keyboard shortcuts — placed after filtered/runDemo declarations to avoid hoisting issues
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return
+      switch (e.key) {
+        case 'd': case 'D':
+          if (!demoRunning) runDemo()
+          break
+        case 'Escape':
+          setSelected(null); setShowShortcuts(false); setShowPricing(false)
+          break
+        case 'ArrowUp': case 'ArrowDown':
+          if (filtered.length > 0) {
+            e.preventDefault()
+            const idx = selected ? filtered.findIndex(t => t.id === selected.id) : -1
+            if (e.key === 'ArrowUp') setSelected(filtered[idx > 0 ? idx - 1 : filtered.length - 1])
+            else setSelected(filtered[idx >= 0 && idx < filtered.length - 1 ? idx + 1 : 0])
+          }
+          break
+        case 'r': case 'R':
+          setLoading(true)
+          fetch('/api/tips').then(r => r.json()).then(data => { setTips(Array.isArray(data) ? data : []); setLoading(false) }).catch(() => setLoading(false))
+          break
+      }
+    }
+    window.addEventListener('keydown', handleKeyDown)
+    return () => window.removeEventListener('keydown', handleKeyDown)
+  }, [demoRunning, selected, filtered, runDemo])
+
   const ORB_LABEL: Record<OrbMode, string> = {
     idle: 'STANDBY', listening: 'CALL ACTIVE', thinking: 'ANALYZING', speaking: 'INCOMING', critical: 'CRITICAL ALERT', attendance: 'ATTENDANCE',
   }
@@ -937,6 +1050,7 @@ export default function Dashboard() {
         <IphoneNotif show={showNotif} onDismiss={() => setShowNotif(false)} />
         <ImpactCard show={showImpact} onDismiss={() => setShowImpact(false)} />
         {showPricing && <PricingModal onClose={() => setShowPricing(false)} />}
+        {showShortcuts && <KeyboardShortcutsModal onClose={() => setShowShortcuts(false)} />}
 
         {/* Ambient glow */}
         <div className="pointer-events-none fixed inset-0 z-0" style={{
@@ -960,33 +1074,29 @@ export default function Dashboard() {
               </div>
             </div>
 
-            {/* Tab switcher */}
-            <div className="flex items-center gap-0.5 p-0.5 rounded-lg" style={{ background: '#f5f5f5', border: '1px solid rgba(255,255,255,0.05)' }}>
-              {([
-                { id: 'command',      label: 'Command Center',       icon: '⬡' },
-                { id: 'intelligence', label: 'Threat Intelligence',  icon: '◈' },
-              ] as { id: TabId; label: string; icon: string }[]).map(tab => (
-                <button key={tab.id} onClick={() => setActiveTab(tab.id)}
-                  className={`flex items-center gap-1.5 px-3 py-1 rounded-md text-[10px] font-semibold tracking-wide transition-all duration-200 ${
-                    activeTab === tab.id
-                      ? 'bg-white text-zinc-900 shadow-sm border border-zinc-200'
-                      : 'text-zinc-400 hover:text-zinc-600'
-                  }`}>
-                  <span className="text-[11px]">{tab.icon}</span>
-                  {tab.label}
-                </button>
-              ))}
-            </div>
-
-            <Link href="/attendance"
-              className="text-[10px] font-semibold uppercase px-3 py-1.5 rounded-md border border-slate-800 text-slate-500 hover:text-slate-200 hover:border-slate-600 transition-colors tracking-widest">
-              Attendance
-            </Link>
+          {/* Tab switcher */}
+          <div className="flex items-center gap-0.5 p-0.5 rounded-lg" style={{ background: '#f5f5f5', border: '1px solid rgba(255,255,255,0.05)' }}>
+            {([
+              { id: 'command',      label: 'Command Center',       icon: '⬡' },
+              { id: 'intelligence', label: 'Threat Intelligence',  icon: '◈' },
+            ] as { id: TabId; label: string; icon: string }[]).map(tab => (
+              <button key={tab.id} onClick={() => setActiveTab(tab.id)}
+                className={`flex items-center gap-1.5 px-3 py-1 rounded-md text-[10px] font-semibold tracking-wide transition-all duration-200 ${
+                  activeTab === tab.id
+                    ? 'bg-white text-zinc-900 shadow-sm border border-zinc-200'
+                    : 'text-zinc-400 hover:text-zinc-600'
+                }`}>
+                <span className="text-[11px]">{tab.icon}</span>
+                {tab.label}
+              </button>
+            ))}
           </div>
+        </div>
 
-          {/* Right: actions */}
-          <div className="flex items-center gap-2.5">
-            <LiveCounter />
+        {/* Right: actions */}
+        <div className="flex items-center gap-2.5">
+          <button onClick={() => setShowShortcuts(true)} className="w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-bold text-zinc-400 border border-zinc-200 hover:text-zinc-600 hover:bg-zinc-50 transition-colors">?</button>
+          <LiveCounter />
             <button onClick={runDemo} disabled={demoRunning}
               className={`flex items-center gap-1.5 text-[10px] font-semibold uppercase px-3 py-1.5 rounded-md border transition-all tracking-widest ${
                 demoRunning
@@ -1006,12 +1116,24 @@ export default function Dashboard() {
                 {newCount} NEW
               </span>
             )}
-            <span className="text-[10px] text-zinc-400 font-mono hidden xl:block">{dateStr}</span>
-          </div>
-        </header>
+              <span className="text-[10px] text-zinc-400 font-mono hidden xl:block">{dateStr}</span>
+            </div>
+          </header>
 
-        {/* ── Tab: Command Center ── */}
-        {activeTab === 'command' && (
+          {/* Cross-school alert banner */}
+          {!dismissedAlert && crossSchoolAlert && activeTab === 'command' && (
+            <div className="relative z-10 shrink-0 px-5 py-2.5 flex items-center justify-between" style={{ background: 'rgba(168,85,247,0.08)', borderBottom: '1px solid rgba(168,85,247,0.3)' }}>
+              <div className="flex items-center gap-2">
+                <span className="text-purple-600 animate-pulse">⚡</span>
+                <span className="text-[11px] font-bold uppercase tracking-[0.1em] text-purple-700">Cross-school pattern detected:</span>
+                <span className="text-[11px] text-purple-800 font-medium">{crossSchoolAlert}</span>
+              </div>
+              <button onClick={() => setDismissedAlert(true)} className="text-purple-500 hover:text-purple-800 text-lg leading-none">×</button>
+            </div>
+          )}
+
+          {/* ── Tab: Command Center ── */}
+          {activeTab === 'command' && (
           <div className="relative z-10 flex flex-1 min-h-0">
 
             {/* Left panel */}
@@ -1129,9 +1251,7 @@ export default function Dashboard() {
 
               <div className="flex-1 overflow-y-auto px-3 py-3 flex flex-col gap-1.5 min-h-0">
                 {loading ? (
-                  [...Array(4)].map((_, i) => (
-                    <div key={i} className="h-16 rounded-lg animate-pulse" style={{ background: '#f9f9f9' }} />
-                  ))
+                  [...Array(4)].map((_, i) => <TipRowSkeleton key={i} />)
                 ) : filtered.length === 0 ? (
                   <div className="flex flex-col items-center justify-center flex-1 gap-2.5 text-center py-12">
                     <div className="text-2xl opacity-20">📡</div>
@@ -1171,7 +1291,7 @@ export default function Dashboard() {
         </div>
       </div>
 
-      {selected && <TipDrawer tip={selected} onClose={() => setSelected(null)} />}
+      {selected && <TipDrawer tip={selected} onClose={() => setSelected(null)} onStatusChange={updateTipStatus} />}
     </>
   )
 }

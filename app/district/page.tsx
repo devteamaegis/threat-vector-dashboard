@@ -90,6 +90,43 @@ function StatCard({
   )
 }
 
+// ─── Threat Heatmap ───────────────────────────────────────────────────────────
+
+function ThreatHeatmap({ schools }: { schools: [string, Tip[]][] }) {
+  if (schools.length === 0) return null
+  return (
+    <div className="rounded-xl overflow-hidden flex flex-col" style={{ background: '#ffffff', border: '1px solid #e4e4e7', boxShadow: '0 1px 3px rgba(0,0,0,0.06)' }}>
+      <div className="px-5 py-4 shrink-0" style={{ borderBottom: '1px solid #f0f0f0' }}>
+        <div className="text-sm font-semibold text-zinc-900">District Threat Heatmap</div>
+        <div className="text-[10px] text-zinc-400 mt-0.5">Live status of all monitored schools</div>
+      </div>
+      <div className="p-5 grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
+        {schools.map(([school, tips]) => {
+          const active = tips.filter(t => t.status !== 'resolved' && t.status !== 'dismissed')
+          const hasCrit = active.some(t => t.urgency === 'critical')
+          const hasHigh = active.some(t => t.urgency === 'high')
+          const hasMed  = active.some(t => t.urgency === 'medium')
+          
+          let style = { background: '#f0fdf4', border: '1px solid #bbf7d0', color: '#15803d', boxShadow: 'none' }
+          let dot = '#22c55e'
+          if (hasCrit) { style = { background: '#fef2f2', border: '1px solid #fecaca', color: '#b91c1c', boxShadow: '0 0 15px rgba(239,68,68,0.4)' }; dot = '#ef4444' }
+          else if (hasHigh) { style = { background: '#fff7ed', border: '1px solid #fed7aa', color: '#c2410c', boxShadow: 'none' }; dot = '#f97316' }
+          else if (hasMed) { style = { background: '#fefce8', border: '1px solid #fef08a', color: '#b45309', boxShadow: 'none' }; dot = '#eab308' }
+          
+          return (
+            <Link key={school} href={`/principal/${encodeURIComponent(school)}`}
+              className="p-3 rounded-xl flex items-center gap-2.5 transition-all hover:scale-105"
+              style={style}>
+              <span className={`w-2 h-2 rounded-full shrink-0 ${hasCrit ? 'animate-pulse' : ''}`} style={{ background: dot }} />
+              <span className="text-xs font-bold truncate">{school}</span>
+            </Link>
+          )
+        })}
+      </div>
+    </div>
+  )
+}
+
 // ─── CSS Bar Chart ────────────────────────────────────────────────────────────
 
 function BarChart({ counts }: { counts: Record<string, number> }) {
@@ -396,8 +433,10 @@ export default function DistrictPage() {
 
         {/* Two-column layout */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          {/* Left: school leaderboard */}
+          {/* Left: heatmap & leaderboard */}
           <div className="lg:col-span-2 flex flex-col gap-6">
+            {!loading && <ThreatHeatmap schools={schools} />}
+
             <div
               className="rounded-xl overflow-hidden"
               style={{ background: '#ffffff', border: '1px solid #e4e4e7', boxShadow: '0 1px 3px rgba(0,0,0,0.06)' }}
