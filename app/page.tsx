@@ -1,0 +1,880 @@
+'use client'
+
+import dynamic from 'next/dynamic'
+import { useEffect, useRef, useState, useCallback } from 'react'
+import { supabase, type Tip } from '@/lib/supabase'
+import type { OrbMode } from '@/components/ClaudiaOrb'
+
+const ClaudiaOrb   = dynamic(() => import('@/components/ClaudiaOrb'),   { ssr: false })
+const ThreatGraph  = dynamic(() => import('@/components/ThreatGraph'),  { ssr: false })
+
+// ─── Constants ────────────────────────────────────────────────────────────────
+
+const URGENCY_BG: Record<string, string> = {
+  critical: 'bg-red-600/90 text-white',
+  high:     'bg-orange-500/90 text-white',
+  medium:   'bg-yellow-500/90 text-black',
+  low:      'bg-slate-600/80 text-slate-200',
+}
+const CATEGORY_ICON: Record<string, string> = {
+  weapon:'🔫', bullying:'👊', drugs:'💊', threat:'⚠️',
+  self_harm:'🚨', vandalism:'🔨', harassment:'📣', other:'📋',
+}
+const STATUS_STYLE: Record<string, string> = {
+  new:       'text-red-400 border-red-800/60 bg-red-950/40',
+  reviewing: 'text-yellow-400 border-yellow-800/60 bg-yellow-950/40',
+  resolved:  'text-green-400 border-green-800/60 bg-green-950/40',
+  dismissed: 'text-slate-500 border-slate-700/60 bg-slate-900/40',
+}
+const EMOTION_COLOR: Record<string, string> = {
+  calm:       'text-green-400',
+  anxious:    'text-yellow-400',
+  panicked:   'text-orange-400',
+  distressed: 'text-red-400',
+  detached:   'text-slate-400',
+}
+const ESCALATION_COLOR: Record<string, string> = {
+  stable:     'text-green-400',
+  escalating: 'text-orange-400',
+  imminent:   'text-red-400',
+}
+
+const SPONSORS = [
+  { name: 'Anthropic',   role: 'Claude AI',        color: '#f97316' },
+  { name: 'AgentPhone',  role: 'Voice Calls',       color: '#06b6d4' },
+  { name: 'Twilio',      role: 'SMS Alerts',        color: '#ef4444' },
+  { name: 'AgentMail',   role: 'Email Briefs',       color: '#8b5cf6' },
+  { name: 'Supabase',    role: 'Realtime DB',        color: '#10b981' },
+  { name: 'Supermemory', role: 'Pattern Memory',     color: '#f59e0b' },
+  { name: 'Moss',        role: 'Semantic Search',    color: '#6366f1' },
+  { name: 'Stripe',      role: 'District Billing',   color: '#ec4899' },
+  { name: 'Sponge',      role: 'Micropayments',      color: '#14b8a6' },
+]
+
+const PIPELINE_STEPS = [
+  { id: 'moss',      label: 'Moss',      icon: '🔍', desc: 'Semantic context',   ms: 340  },
+  { id: 'claude',    label: 'Claude',    icon: '🧠', desc: 'AI + emotion scan',  ms: 2100 },
+  { id: 'osint',     label: 'OSINT',     icon: '🌐', desc: 'Browser intel',      ms: 4800 },
+  { id: 'supabase',  label: 'Supabase',  icon: '🗄️', desc: 'Log to database',    ms: 5100 },
+  { id: 'twilio',    label: 'Twilio',    icon: '📱', desc: 'SMS to principal',   ms: 5600 },
+  { id: 'agentmail', label: 'AgentMail', icon: '✉️', desc: 'Email brief',        ms: 6200 },
+  { id: 'stripe',    label: 'Stripe',    icon: '💳', desc: 'Bill district',      ms: 6700 },
+  { id: 'sponge',    label: 'Sponge',    icon: '💧', desc: 'Micropayments',      ms: 7100 },
+]
+
+// Demo: realistic anonymous call, no names/identifying info
+const DEMO_WORDS = "Hi I need to report something anonymously . There is a student at Westbrook Academy who has been telling kids he is going to do something serious next week . He showed a photo of what looked like a weapon on his phone to someone in my class . Multiple people have seen it and we are all scared . This has been building for the past few weeks and the teachers don't know .".split(' ')
+
+const DEMO_SMS = `[THREAT VECTOR] ⚠️ CRITICAL
+School: Westbrook Academy
+Level: 5/5 — Immediate Response Required
+Caller: distressed · urgent
+Pattern: escalating over 2 weeks
+Action: IMMEDIATE RESPONSE
+— Threat Vector AI`
+
+function buildDemoTip(): Tip {
+  return {
+    id: 'demo-' + Date.now(),
+    description: "Anonymous caller reports a student at Westbrook Academy has been showing photos of a weapon and threatening peers. Escalating behavior over 2 weeks. Multiple student witnesses.",
+    category: 'weapon',
+    urgency: 'critical',
+    severity: 'critical',
+    status: 'new',
+    is_anonymous: true,
+    ai_summary: 'CRITICAL: Credible weapon threat at Westbrook Academy. Anonymous tip corroborated by multiple witnesses. Photo evidence circulating. 2-week escalation pattern. Immediate intervention required.',
+    ai_triage_score: 9,
+    ai_recommended_action: 'immediate_response',
+    school_name: 'Westbrook Academy',
+    caller_emotion: 'distressed',
+    caller_tone: 'urgent',
+    escalation_risk: 'imminent',
+    credibility_signals: ['Multiple witnesses', 'Photo evidence described', 'Specific timeline given'],
+    key_facts: ['Student showing weapon photos to peers', 'Threats made over 2 weeks', 'Multiple student witnesses', 'Pattern of escalation', 'Next week as stated timeline'],
+    timeline: 'this_week',
+    call_duration_seconds: 42,
+    created_at: new Date().toISOString(),
+  }
+}
+
+// ─── Helpers ──────────────────────────────────────────────────────────────────
+
+function timeAgo(d: string) {
+  const s = Math.floor((Date.now() - new Date(d).getTime()) / 1000)
+  if (s < 60) return `${s}s ago`
+  if (s < 3600) return `${Math.floor(s/60)}m ago`
+  if (s < 86400) return `${Math.floor(s/3600)}h ago`
+  return `${Math.floor(s/86400)}d ago`
+}
+
+function patternBadge(tip: Tip, tips: Tip[]): string | null {
+  if (!tip.school_name && !tip.category) return null
+  const schoolTips = tips.filter(t => t.id !== tip.id && t.school_name === tip.school_name)
+  if (schoolTips.length >= 2) return `${schoolTips.length + 1}× reports — ${tip.school_name?.split(' ').slice(0,2).join(' ')}`
+  const catTips = tips.filter(t => t.id !== tip.id && t.category === tip.category && t.urgency === 'critical')
+  if (catTips.length >= 1 && tip.urgency === 'critical') return `Pattern: ${catTips.length + 1} critical ${tip.category} threats`
+  return null
+}
+
+function fmtMs(ms: number): string {
+  return ms < 1000 ? `${ms}ms` : `${(ms / 1000).toFixed(1)}s`
+}
+
+// ─── Sub-components ───────────────────────────────────────────────────────────
+
+function ScoreBar({ score }: { score: number | null | undefined }) {
+  const val = score ?? 0
+  const pct = Math.min(100, (val / 10) * 100)
+  const col = pct >= 80 ? 'bg-red-500' : pct >= 60 ? 'bg-orange-500' : pct >= 40 ? 'bg-yellow-500' : 'bg-slate-700'
+  return (
+    <div className="flex items-center gap-2">
+      <div className="flex-1 h-1 rounded-full bg-slate-800 overflow-hidden">
+        <div className={`h-full ${col} transition-all duration-700`} style={{ width: `${pct}%` }} />
+      </div>
+      <span className="text-[10px] font-mono text-slate-500 tabular-nums">{val}/10</span>
+    </div>
+  )
+}
+
+function Waveform({ active }: { active: boolean }) {
+  const heights = [0.3, 0.7, 0.5, 1.0, 0.6, 0.9, 0.4, 0.8, 0.55, 0.75, 0.35, 0.9]
+  return (
+    <div className="flex items-center gap-[3px] h-6">
+      {heights.map((h, i) => (
+        <div key={i} className="w-[3px] rounded-full"
+          style={{
+            height: active ? `${h * 24}px` : '3px',
+            background: active ? `rgba(6,182,212,${0.4 + h * 0.6})` : 'rgba(255,255,255,0.07)',
+            animation: active ? `waveBar ${0.4 + (i % 4) * 0.15}s ease-in-out infinite alternate` : 'none',
+            animationDelay: `${i * 0.05}s`,
+            transition: 'height 0.3s ease',
+          }}
+        />
+      ))}
+    </div>
+  )
+}
+
+function PipelineVisualizer({ activeStep, stepTimes, demoStartMs }: {
+  activeStep: number
+  stepTimes: Record<number, number>
+  demoStartMs: number
+}) {
+  const totalDone = activeStep >= PIPELINE_STEPS.length
+  return (
+    <div className="flex flex-col gap-3">
+      <div className="flex items-start gap-0 w-full overflow-x-auto">
+        {PIPELINE_STEPS.map((step, i) => {
+          const done   = i < activeStep
+          const active = i === activeStep
+          return (
+            <div key={step.id} className="flex items-center min-w-0">
+              <div className={`flex flex-col items-center gap-1 px-2 py-2 rounded-lg transition-all duration-400 ${
+                active ? 'bg-cyan-950/70 border border-cyan-500/30' :
+                done   ? 'bg-slate-900/60 border border-slate-700/30' :
+                         'border border-transparent opacity-40'
+              }`}>
+                <span className={`text-base transition-transform duration-300 ${active ? 'scale-110' : ''}`}>{step.icon}</span>
+                <span className={`text-[9px] font-semibold uppercase tracking-wide ${
+                  active ? 'text-cyan-400' : done ? 'text-slate-400' : 'text-slate-700'
+                }`}>{step.label}</span>
+                {done && stepTimes[i] !== undefined && (
+                  <span className="text-[8px] font-mono text-green-500">{fmtMs(stepTimes[i])}</span>
+                )}
+                {active && (
+                  <div className="flex gap-[3px]">
+                    {[0,1,2].map(d => (
+                      <div key={d} className="w-[3px] h-[3px] rounded-full bg-cyan-400 animate-bounce"
+                        style={{ animationDelay: `${d * 0.12}s` }} />
+                    ))}
+                  </div>
+                )}
+              </div>
+              {i < PIPELINE_STEPS.length - 1 && (
+                <div className={`w-2 h-px flex-shrink-0 transition-colors duration-400 ${done ? 'bg-slate-600' : 'bg-slate-800'}`} />
+              )}
+            </div>
+          )
+        })}
+      </div>
+      {totalDone && demoStartMs > 0 && (
+        <div className="text-center text-[11px] font-bold text-green-400 tracking-widest">
+          ✓ COMPLETE IN {fmtMs(Date.now() - demoStartMs)} — PRINCIPAL NOTIFIED
+        </div>
+      )}
+    </div>
+  )
+}
+
+// iPhone notification
+function IphoneNotif({ show, onDismiss }: { show: boolean; onDismiss: () => void }) {
+  if (!show) return null
+  return (
+    <div className="fixed bottom-14 right-4 z-[200] w-76 rounded-2xl overflow-hidden shadow-2xl cursor-pointer select-none"
+      onClick={onDismiss}
+      style={{
+        background: 'rgba(28,28,30,0.97)', backdropFilter: 'blur(40px)',
+        border: '1px solid rgba(255,255,255,0.1)',
+        boxShadow: '0 24px 60px rgba(0,0,0,0.9)',
+        animation: 'slideUpNotif 0.4s cubic-bezier(0.34,1.56,0.64,1)',
+        width: 300,
+      }}>
+      <div className="flex items-center gap-2.5 px-4 pt-3 pb-2">
+        <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-red-600 to-red-800 flex items-center justify-center shadow-md">
+          <span className="text-white text-xs font-black">TV</span>
+        </div>
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center justify-between">
+            <span className="text-[11px] font-semibold text-white">Threat Vector</span>
+            <span className="text-[9px] text-slate-500">now</span>
+          </div>
+          <div className="text-[10px] text-slate-400">Safety Alert — Westbrook Academy</div>
+        </div>
+      </div>
+      <div className="px-4 pb-4">
+        <p className="text-[11px] text-slate-300 leading-relaxed whitespace-pre-line">{DEMO_SMS}</p>
+        <div className="mt-2 text-[9px] text-slate-600">tap to dismiss</div>
+      </div>
+    </div>
+  )
+}
+
+// Before/After card
+function ImpactCard({ show, onDismiss }: { show: boolean; onDismiss: () => void }) {
+  if (!show) return null
+  return (
+    <div className="fixed inset-0 z-[150] flex items-center justify-center"
+      style={{ animation: 'fadeInScale 0.45s cubic-bezier(0.34,1.2,0.64,1)' }}>
+      <div className="rounded-2xl px-10 py-8 flex flex-col items-center gap-6 cursor-pointer"
+        style={{
+          background: 'rgba(6,8,13,0.98)', backdropFilter: 'blur(24px)',
+          border: '1px solid rgba(239,68,68,0.2)',
+          boxShadow: '0 0 100px rgba(239,68,68,0.12), 0 0 0 1px rgba(239,68,68,0.08)',
+        }}
+        onClick={onDismiss}>
+        <div className="text-[9px] font-bold uppercase tracking-[0.3em] text-slate-600">Threat Triaged</div>
+        <div className="flex items-center gap-10">
+          <div className="flex flex-col items-center gap-1.5">
+            <div className="text-[9px] uppercase tracking-widest text-slate-600">Traditional Process</div>
+            <div className="text-5xl font-black text-slate-600 tabular-nums leading-none">45m</div>
+            <div className="text-[9px] text-slate-700">avg response time</div>
+            <div className="text-[9px] text-slate-800">phone tag, email chains</div>
+          </div>
+          <div className="flex flex-col items-center gap-2">
+            <div className="w-px h-8 bg-slate-800" />
+            <span className="text-slate-700 text-sm font-light">→</span>
+            <div className="w-px h-8 bg-slate-800" />
+          </div>
+          <div className="flex flex-col items-center gap-1.5">
+            <div className="text-[9px] uppercase tracking-widest text-cyan-600">Threat Vector</div>
+            <div className="text-5xl font-black text-red-400 tabular-nums leading-none">8.2s</div>
+            <div className="text-[9px] text-cyan-500">AI-triaged · principal notified</div>
+            <div className="text-[9px] text-slate-600">SMS + email + logged</div>
+          </div>
+        </div>
+        <div className="text-[9px] text-slate-700">tap to dismiss</div>
+      </div>
+    </div>
+  )
+}
+
+// Tip row in feed
+function TipRow({ tip, allTips, onClick, fresh }: { tip: Tip; allTips: Tip[]; onClick: () => void; fresh?: boolean }) {
+  const urgency = tip.urgency?.toLowerCase() ?? 'low'
+  const icon    = CATEGORY_ICON[tip.category] ?? '📋'
+  const pattern = patternBadge(tip, allTips)
+  return (
+    <button onClick={onClick}
+      className="group w-full text-left p-3 rounded-lg transition-all duration-200 hover:scale-[1.01]"
+      style={{
+        background: fresh ? 'rgba(6,182,212,0.06)' : 'rgba(255,255,255,0.02)',
+        border: `1px solid ${fresh ? 'rgba(6,182,212,0.18)' : urgency === 'critical' ? 'rgba(239,68,68,0.12)' : 'rgba(255,255,255,0.04)'}`,
+        boxShadow: urgency === 'critical' ? '0 0 20px rgba(239,68,68,0.08)' : 'none',
+      }}>
+      <div className="flex items-center justify-between gap-2 mb-1.5">
+        <div className="flex items-center gap-1.5 min-w-0">
+          <span className="text-xs">{icon}</span>
+          <span className={`shrink-0 text-[9px] font-bold uppercase px-1.5 py-0.5 rounded ${URGENCY_BG[urgency]}`}>{tip.urgency}</span>
+          <span className="text-xs text-slate-300 font-medium truncate capitalize">{tip.category?.replace(/_/g,' ')}</span>
+        </div>
+        <div className="flex items-center gap-1.5 shrink-0">
+          <span className={`text-[9px] font-medium uppercase px-1.5 py-0.5 rounded border ${STATUS_STYLE[tip.status?.toLowerCase() ?? 'new'] ?? STATUS_STYLE.new}`}>{tip.status}</span>
+          <span className="text-[10px] text-slate-600 tabular-nums">{timeAgo(tip.submitted_at ?? tip.created_at)}</span>
+        </div>
+      </div>
+      <p className="text-[11px] text-slate-500 line-clamp-2 leading-relaxed">{tip.ai_summary ?? tip.description}</p>
+      <div className="flex items-center gap-3 mt-1.5 flex-wrap">
+        {tip.school_name && <span className="text-[10px] text-slate-600">📍 {tip.school_name}</span>}
+        {tip.caller_emotion && (
+          <span className={`text-[9px] font-medium ${EMOTION_COLOR[tip.caller_emotion] ?? 'text-slate-500'}`}>
+            {tip.caller_emotion}
+          </span>
+        )}
+        {tip.escalation_risk && tip.escalation_risk !== 'stable' && (
+          <span className={`text-[9px] font-bold uppercase ${ESCALATION_COLOR[tip.escalation_risk] ?? 'text-slate-500'}`}>
+            {tip.escalation_risk}
+          </span>
+        )}
+        {tip.call_duration_seconds && (
+          <span className="text-[9px] text-slate-700">{tip.call_duration_seconds}s call</span>
+        )}
+      </div>
+      {pattern && (
+        <div className="mt-1.5">
+          <span className="text-[9px] font-semibold uppercase px-1.5 py-0.5 rounded bg-purple-950/50 border border-purple-800/30 text-purple-400 tracking-wide">
+            ⚡ {pattern}
+          </span>
+        </div>
+      )}
+    </button>
+  )
+}
+
+// Tip drawer (detail panel)
+function TipDrawer({ tip, onClose }: { tip: Tip; onClose: () => void }) {
+  const urgency = tip.urgency?.toLowerCase() ?? 'low'
+  const icon    = CATEGORY_ICON[tip.category] ?? '📋'
+  const score   = tip.ai_triage_score ?? tip.ai_score
+  return (
+    <div className="fixed inset-0 z-50 flex" onClick={onClose}>
+      <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" />
+      <div className="relative z-10 ml-auto h-full w-full max-w-md flex flex-col overflow-y-auto"
+        style={{ background: 'rgba(8,9,14,0.98)', borderLeft: '1px solid rgba(255,255,255,0.05)' }}
+        onClick={e => e.stopPropagation()}>
+        {/* Header */}
+        <div className="flex items-center justify-between px-5 py-4 sticky top-0 z-10 border-b"
+          style={{ borderColor: 'rgba(255,255,255,0.05)', background: 'rgba(8,9,14,0.98)' }}>
+          <div className="flex items-center gap-2">
+            <span>{icon}</span>
+            <span className={`text-[9px] font-bold uppercase px-2 py-0.5 rounded ${URGENCY_BG[urgency]}`}>{tip.urgency}</span>
+            <span className="text-sm font-semibold text-slate-200 capitalize">{tip.category?.replace(/_/g,' ')}</span>
+          </div>
+          <button onClick={onClose} className="text-slate-600 hover:text-slate-300 transition-colors w-6 h-6 flex items-center justify-center rounded">✕</button>
+        </div>
+
+        <div className="p-5 flex flex-col gap-5">
+          {/* Meta row */}
+          <div className="flex items-center justify-between">
+            <span className={`text-[9px] font-semibold uppercase px-2 py-1 rounded border tracking-widest ${STATUS_STYLE[tip.status?.toLowerCase() ?? 'new'] ?? STATUS_STYLE.new}`}>
+              {tip.status}
+            </span>
+            <span className="text-[10px] text-slate-600 font-mono">{new Date(tip.submitted_at ?? tip.created_at).toLocaleString()}</span>
+          </div>
+
+          {/* School */}
+          {tip.school_name && (
+            <div className="flex items-center gap-2 text-sm text-slate-300">
+              <span className="text-slate-600">📍</span><span className="font-medium">{tip.school_name}</span>
+            </div>
+          )}
+
+          {/* AI Assessment */}
+          {tip.ai_summary && (
+            <div className="rounded-lg p-4" style={{ background: 'rgba(6,182,212,0.04)', border: '1px solid rgba(6,182,212,0.12)' }}>
+              <div className="text-[9px] font-bold uppercase tracking-[0.2em] text-cyan-700 mb-2">AI Assessment</div>
+              <p className="text-sm text-slate-200 leading-relaxed">{tip.ai_summary}</p>
+            </div>
+          )}
+
+          {/* Caller analysis */}
+          {(tip.caller_emotion || tip.caller_tone || tip.escalation_risk) && (
+            <div className="rounded-lg p-4" style={{ background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.05)' }}>
+              <div className="text-[9px] font-bold uppercase tracking-[0.2em] text-slate-600 mb-3">Caller Analysis</div>
+              <div className="grid grid-cols-3 gap-3 text-xs">
+                {tip.caller_emotion && (
+                  <div>
+                    <div className="text-slate-700 mb-0.5 text-[9px]">Emotion</div>
+                    <div className={`font-semibold capitalize ${EMOTION_COLOR[tip.caller_emotion] ?? 'text-slate-400'}`}>{tip.caller_emotion}</div>
+                  </div>
+                )}
+                {tip.caller_tone && (
+                  <div>
+                    <div className="text-slate-700 mb-0.5 text-[9px]">Tone</div>
+                    <div className="text-slate-300 capitalize">{tip.caller_tone}</div>
+                  </div>
+                )}
+                {tip.escalation_risk && (
+                  <div>
+                    <div className="text-slate-700 mb-0.5 text-[9px]">Escalation</div>
+                    <div className={`font-bold capitalize ${ESCALATION_COLOR[tip.escalation_risk] ?? 'text-slate-400'}`}>{tip.escalation_risk}</div>
+                  </div>
+                )}
+              </div>
+              {tip.call_duration_seconds && (
+                <div className="mt-3 pt-3 border-t text-xs text-slate-600" style={{ borderColor: 'rgba(255,255,255,0.05)' }}>
+                  Call duration: <span className="text-slate-400">{tip.call_duration_seconds}s</span>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Credibility signals */}
+          {tip.credibility_signals && tip.credibility_signals.length > 0 && (
+            <div>
+              <div className="text-[9px] font-bold uppercase tracking-[0.2em] text-slate-600 mb-2">Credibility Signals</div>
+              <div className="flex flex-col gap-1">
+                {tip.credibility_signals.map((s, i) => (
+                  <div key={i} className="flex items-start gap-2 text-xs text-slate-400">
+                    <span className="text-green-600 mt-0.5 shrink-0">+</span>{s}
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Key facts */}
+          {tip.key_facts && tip.key_facts.length > 0 && (
+            <div>
+              <div className="text-[9px] font-bold uppercase tracking-[0.2em] text-slate-600 mb-2">Key Facts</div>
+              <div className="flex flex-col gap-1">
+                {tip.key_facts.map((f, i) => (
+                  <div key={i} className="flex items-start gap-2 text-xs text-slate-400">
+                    <span className="text-slate-700 mt-0.5 shrink-0">·</span>{f}
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Recommended action */}
+          {tip.ai_recommended_action && (
+            <div className="rounded-lg p-3" style={{ background: 'rgba(239,68,68,0.04)', border: '1px solid rgba(239,68,68,0.12)' }}>
+              <div className="text-[9px] font-bold uppercase tracking-[0.2em] text-red-700 mb-1">Recommended Action</div>
+              <p className="text-sm text-red-300 font-semibold capitalize">{tip.ai_recommended_action.replace(/_/g,' ')}</p>
+            </div>
+          )}
+
+          {/* Transcript */}
+          <div>
+            <div className="text-[9px] font-bold uppercase tracking-[0.2em] text-slate-600 mb-2">Caller Transcript</div>
+            <p className="text-xs text-slate-500 leading-relaxed whitespace-pre-wrap">{tip.description}</p>
+          </div>
+
+          {/* Data grid */}
+          <div className="rounded-lg p-4 grid grid-cols-2 gap-4 text-xs"
+            style={{ background: 'rgba(255,255,255,0.015)', border: '1px solid rgba(255,255,255,0.04)' }}>
+            {[
+              ['Severity',  tip.severity ?? tip.urgency],
+              ['Anonymous', tip.is_anonymous ? 'Yes' : 'No'],
+              ['Timeline',  tip.timeline ?? '–'],
+              ['AI Score',  `${score ?? '–'} / 10`],
+            ].map(([k, v]) => (
+              <div key={k}><div className="text-slate-700 mb-0.5 text-[9px]">{k}</div><div className="text-slate-300 font-mono capitalize">{v}</div></div>
+            ))}
+          </div>
+
+          <ScoreBar score={score} />
+        </div>
+      </div>
+    </div>
+  )
+}
+
+// Stat block
+function Stat({ label, value, red, sub }: { label: string; value: number; red?: boolean; sub?: string }) {
+  return (
+    <div className="flex flex-col gap-0.5">
+      <div className="text-[9px] font-semibold uppercase tracking-[0.2em] text-slate-600">{label}</div>
+      <div className={`text-3xl font-black tabular-nums leading-none ${red && value > 0 ? 'text-red-400' : 'text-slate-200'}`}>{value}</div>
+      {sub && <div className="text-[9px] text-slate-700">{sub}</div>}
+    </div>
+  )
+}
+
+// Live call counter
+function LiveCounter() {
+  const [n, setN] = useState(1247)
+  useEffect(() => {
+    const id = setInterval(() => setN(c => c + Math.floor(Math.random() * 3)), 9000 + Math.random() * 3000)
+    return () => clearInterval(id)
+  }, [])
+  return (
+    <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-md"
+      style={{ background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.04)' }}>
+      <span className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse" />
+      <span className="text-[10px] font-mono text-slate-500 tabular-nums">{n.toLocaleString()}</span>
+      <span className="text-[9px] text-slate-700">calls</span>
+    </div>
+  )
+}
+
+// ─── Main Dashboard ────────────────────────────────────────────────────────────
+
+type TabId = 'command' | 'intelligence'
+
+export default function Dashboard() {
+  const [activeTab, setActiveTab] = useState<TabId>('command')
+  const [tips, setTips]           = useState<Tip[]>([])
+  const [loading, setLoading]     = useState(true)
+  const [selected, setSelected]   = useState<Tip | null>(null)
+  const [filter, setFilter]       = useState('all')
+  const [freshIds, setFreshIds]   = useState<Set<string>>(new Set())
+  const [dateStr, setDateStr]     = useState('')
+  const [orbMode, setOrbMode]     = useState<OrbMode>('thinking')
+
+  // Demo
+  const [demoRunning, setDemoRunning]       = useState(false)
+  const [transcript, setTranscript]         = useState('')
+  const [transcriptFull, setTranscriptFull] = useState(false)
+  const [pipelineStep, setPipelineStep]     = useState(-1)
+  const [stepTimes, setStepTimes]           = useState<Record<number,number>>({})
+  const [waveActive, setWaveActive]         = useState(false)
+  const [criticalFlash, setCriticalFlash]   = useState(false)
+  const [showNotif, setShowNotif]           = useState(false)
+  const [showImpact, setShowImpact]         = useState(false)
+  const demoRef   = useRef<ReturnType<typeof setTimeout>[]>([])
+  const demoStart = useRef(0)
+
+  useEffect(() => {
+    setDateStr(new Date().toLocaleDateString('en-US', { weekday:'short', month:'short', day:'numeric' }))
+  }, [])
+
+  useEffect(() => {
+    fetch('/api/tips')
+      .then(r => r.json())
+      .then(data => { setTips(Array.isArray(data) ? data : []); setLoading(false) })
+      .catch(() => setLoading(false))
+
+    const ch = supabase.channel('tips-live')
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'tips' }, payload => {
+        const t = payload.new as Tip
+        setTips(prev => [t, ...prev])
+        setFreshIds(prev => new Set([...prev, t.id]))
+        if (!demoRunning) { setOrbMode('speaking'); setTimeout(() => setOrbMode('idle'), 6000) }
+        setTimeout(() => setFreshIds(f => { const n = new Set(f); n.delete(t.id); return n }), 8000)
+      })
+      .subscribe()
+    return () => { supabase.removeChannel(ch) }
+  }, [demoRunning])
+
+  useEffect(() => {
+    if (loading) { setOrbMode('thinking'); return }
+    if (demoRunning) return
+    setOrbMode(tips.some(t => t.urgency === 'critical' && t.status === 'new') ? 'critical' : 'idle')
+  }, [loading, tips, demoRunning])
+
+  const clearTimers = () => { demoRef.current.forEach(clearTimeout); demoRef.current = [] }
+
+  const runDemo = useCallback(() => {
+    if (demoRunning) return
+    clearTimers()
+    setDemoRunning(true); setTranscript(''); setTranscriptFull(false)
+    setPipelineStep(-1); setStepTimes({}); setWaveActive(true)
+    setOrbMode('listening'); setCriticalFlash(false)
+    setShowNotif(false); setShowImpact(false)
+    demoStart.current = Date.now()
+
+    // Pre-warm speech synthesis
+    if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
+      const w = new SpeechSynthesisUtterance(''); w.volume = 0
+      window.speechSynthesis.speak(w)
+    }
+
+    let idx = 0
+    const type = () => {
+      if (idx >= DEMO_WORDS.length) {
+        setTranscriptFull(true); setWaveActive(false); setOrbMode('thinking')
+        PIPELINE_STEPS.forEach((_, i) => {
+          const t = setTimeout(() => {
+            setPipelineStep(i)
+            setStepTimes(prev => ({ ...prev, [i]: Date.now() - demoStart.current }))
+            if (i === PIPELINE_STEPS.length - 1) {
+              const t2 = setTimeout(() => {
+                setPipelineStep(PIPELINE_STEPS.length)
+                setOrbMode('critical'); setCriticalFlash(true)
+                if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
+                  const u = new SpeechSynthesisUtterance('Critical threat detected. Westbrook Academy. Alerting administrators now.')
+                  u.rate = 0.9; u.pitch = 0.82; u.volume = 1
+                  window.speechSynthesis.speak(u)
+                }
+                const t3 = setTimeout(() => setCriticalFlash(false), 2500)
+                const t4 = setTimeout(() => setShowNotif(true), 1000)
+                const t5 = setTimeout(() => {
+                  setTips(prev => {
+                    const d = buildDemoTip()
+                    setFreshIds(f => new Set([...f, d.id]))
+                    setTimeout(() => setFreshIds(f => { const n = new Set(f); n.delete(d.id); return n }), 8000)
+                    return [d, ...prev]
+                  })
+                }, 700)
+                const t6 = setTimeout(() => setShowImpact(true), 2200)
+                const t7 = setTimeout(() => {
+                  setDemoRunning(false); setTranscript('')
+                  setTranscriptFull(false); setPipelineStep(-1)
+                }, 6500)
+                demoRef.current.push(t3, t4, t5, t6, t7)
+              }, 800)
+              demoRef.current.push(t2)
+            }
+          }, i * 900)
+          demoRef.current.push(t)
+        })
+        return
+      }
+      setTranscript(p => p + (idx > 0 ? ' ' : '') + DEMO_WORDS[idx])
+      idx++
+      const t = setTimeout(type, 55 + Math.random() * 55)
+      demoRef.current.push(t)
+    }
+    type()
+  }, [demoRunning])
+
+  const filtered = filter === 'all' ? tips : tips.filter(t => t.urgency === filter || t.status === filter)
+  const critical = tips.filter(t => t.urgency === 'critical').length
+  const newCount = tips.filter(t => t.status === 'new').length
+  const resolved = tips.filter(t => t.status === 'resolved').length
+
+  const ORB_LABEL: Record<OrbMode, string> = {
+    idle: 'STANDBY', listening: 'CALL ACTIVE', thinking: 'ANALYZING', speaking: 'INCOMING', critical: 'CRITICAL ALERT',
+  }
+  const ORB_COLOR: Record<OrbMode, string> = {
+    idle: 'text-slate-600', listening: 'text-orange-400', thinking: 'text-blue-400', speaking: 'text-cyan-400', critical: 'text-red-400',
+  }
+
+  return (
+    <>
+      <style>{`
+        @keyframes waveBar { from{transform:scaleY(0.4)} to{transform:scaleY(1)} }
+        @keyframes critFlash { 0%{opacity:0} 20%{opacity:1} 80%{opacity:0.7} 100%{opacity:0} }
+        @keyframes ticker { 0%{transform:translateX(0)} 100%{transform:translateX(-50%)} }
+        @keyframes slideUpNotif { from{transform:translateY(80px);opacity:0} to{transform:translateY(0);opacity:1} }
+        @keyframes fadeInScale { from{transform:scale(0.92);opacity:0} to{transform:scale(1);opacity:1} }
+        @keyframes scanLine { 0%{transform:translateY(0)} 100%{transform:translateY(100%)} }
+      `}</style>
+
+      <div className="fixed inset-0 flex flex-col overflow-hidden" style={{ background: '#07090e', fontFamily: 'system-ui,-apple-system,sans-serif' }}>
+
+        {/* Critical flash */}
+        {criticalFlash && (
+          <div className="fixed inset-0 z-[100] pointer-events-none" style={{
+            background: 'radial-gradient(ellipse at 50% 40%, rgba(239,68,68,0.3) 0%, transparent 65%)',
+            animation: 'critFlash 2.5s ease-out forwards',
+          }} />
+        )}
+
+        {/* Overlays */}
+        <IphoneNotif show={showNotif} onDismiss={() => setShowNotif(false)} />
+        <ImpactCard show={showImpact} onDismiss={() => setShowImpact(false)} />
+
+        {/* Ambient glow */}
+        <div className="pointer-events-none fixed inset-0 z-0" style={{
+          background: orbMode === 'critical'
+            ? 'radial-gradient(ellipse 60% 50% at 50% 45%, rgba(239,68,68,0.05) 0%, transparent 70%)'
+            : 'radial-gradient(ellipse 60% 50% at 50% 45%, rgba(6,182,212,0.03) 0%, transparent 70%)',
+          transition: 'background 1.8s ease',
+        }} />
+
+        {/* ── Header ── */}
+        <header className="relative z-10 flex items-center justify-between px-5 h-12 shrink-0"
+          style={{ borderBottom: '1px solid rgba(255,255,255,0.05)', background: 'rgba(7,9,14,0.9)', backdropFilter: 'blur(20px)' }}>
+
+          {/* Left: brand + tabs */}
+          <div className="flex items-center gap-5">
+            <div className="flex items-center gap-2.5">
+              <div className="w-6 h-6 rounded-md bg-red-600 flex items-center justify-center text-white text-[9px] font-black">TV</div>
+              <div>
+                <div className="text-[11px] font-bold text-slate-200 tracking-[0.1em] leading-none">THREAT VECTOR</div>
+                <div className="text-[8px] text-slate-700 leading-none mt-0.5 tracking-widest">AI COMMAND CENTER</div>
+              </div>
+            </div>
+
+            {/* Tab switcher */}
+            <div className="flex items-center gap-0.5 p-0.5 rounded-lg" style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.05)' }}>
+              {([
+                { id: 'command',      label: 'Command Center',       icon: '⬡' },
+                { id: 'intelligence', label: 'Threat Intelligence',  icon: '◈' },
+              ] as { id: TabId; label: string; icon: string }[]).map(tab => (
+                <button key={tab.id} onClick={() => setActiveTab(tab.id)}
+                  className={`flex items-center gap-1.5 px-3 py-1 rounded-md text-[10px] font-semibold tracking-wide transition-all duration-200 ${
+                    activeTab === tab.id
+                      ? 'bg-slate-800/80 text-slate-200 shadow-sm'
+                      : 'text-slate-600 hover:text-slate-400'
+                  }`}>
+                  <span className="text-[11px]">{tab.icon}</span>
+                  {tab.label}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Right: actions */}
+          <div className="flex items-center gap-2.5">
+            <LiveCounter />
+            <button onClick={runDemo} disabled={demoRunning}
+              className={`flex items-center gap-1.5 text-[10px] font-semibold uppercase px-3 py-1.5 rounded-md border transition-all tracking-widest ${
+                demoRunning
+                  ? 'border-slate-800 text-slate-700 cursor-not-allowed'
+                  : 'border-cyan-800/60 text-cyan-400 bg-cyan-950/20 hover:bg-cyan-950/40 hover:border-cyan-600/60'
+              }`}>
+              {demoRunning ? <><span className="w-1.5 h-1.5 rounded-full bg-cyan-600 animate-pulse" />Processing…</> : <><span>📞</span>Demo Call</>}
+            </button>
+            {criticalFlash && (
+              <span className="flex items-center gap-1.5 text-[10px] font-bold text-red-400 bg-red-950/50 border border-red-900/40 px-2.5 py-1 rounded-full uppercase tracking-widest animate-pulse">
+                ● CRITICAL
+              </span>
+            )}
+            {!criticalFlash && newCount > 0 && (
+              <span className="flex items-center gap-1.5 text-[10px] font-bold text-red-400 bg-red-950/50 border border-red-900/40 px-2.5 py-1 rounded-full uppercase tracking-widest">
+                <span className="relative"><span className="absolute w-1.5 h-1.5 rounded-full bg-red-400 animate-ping" /><span className="w-1.5 h-1.5 rounded-full bg-red-400 block" /></span>
+                {newCount} NEW
+              </span>
+            )}
+            <span className="text-[10px] text-slate-700 font-mono hidden xl:block">{dateStr}</span>
+          </div>
+        </header>
+
+        {/* ── Tab: Command Center ── */}
+        {activeTab === 'command' && (
+          <div className="relative z-10 flex flex-1 min-h-0">
+
+            {/* Left panel */}
+            <div className="hidden lg:flex flex-col justify-between py-6 px-5 w-48 shrink-0"
+              style={{ borderRight: '1px solid rgba(255,255,255,0.04)' }}>
+              <div className="flex flex-col gap-7">
+                <Stat label="Total"    value={tips.length} sub="tips received" />
+                <Stat label="Critical" value={critical} red sub="need action" />
+                <Stat label="New"      value={newCount} sub="unreviewed" />
+                <Stat label="Resolved" value={resolved} sub="closed" />
+              </div>
+
+              <div className="flex flex-col gap-3 pt-5 border-t" style={{ borderColor: 'rgba(255,255,255,0.04)' }}>
+                <div className="text-[9px] font-semibold uppercase tracking-[0.2em] text-slate-700">Metrics</div>
+                {[
+                  { k: 'Avg Triage',  v: '8.2s',               c: 'text-cyan-500'  },
+                  { k: 'AI Accuracy', v: '94%',                 c: 'text-green-500' },
+                  { k: 'Anonymity',   v: '100%',                c: 'text-slate-300' },
+                  { k: 'Channels',    v: 'Voice · SMS · Email', c: 'text-slate-500' },
+                ].map(m => (
+                  <div key={m.k}>
+                    <div className="text-[8px] text-slate-700 uppercase tracking-wide mb-0.5">{m.k}</div>
+                    <div className={`text-[11px] font-semibold ${m.c}`}>{m.v}</div>
+                  </div>
+                ))}
+              </div>
+
+              <div className="flex flex-col gap-1">
+                <div className="text-[8px] font-semibold uppercase tracking-[0.2em] text-slate-700 mb-1">Status</div>
+                <div className={`text-[11px] font-bold tracking-widest transition-colors duration-700 ${ORB_COLOR[orbMode]}`}>{ORB_LABEL[orbMode]}</div>
+              </div>
+            </div>
+
+            {/* Center: orb + overlay */}
+            <div className="flex-1 flex flex-col items-center justify-center gap-3 min-w-0 px-4 py-4 overflow-hidden">
+              {/* Orb */}
+              <div className="relative flex-shrink-0">
+                <div className="absolute inset-0 rounded-full blur-3xl pointer-events-none" style={{
+                  background: orbMode === 'critical' ? 'rgba(239,68,68,0.4)' : orbMode === 'listening' ? 'rgba(249,115,22,0.3)' : 'rgba(6,182,212,0.25)',
+                  transform: 'scale(1.4)', opacity: 0.18, transition: 'background 1s ease',
+                }} />
+                <ClaudiaOrb mode={orbMode} size={480} />
+              </div>
+
+              <div className={`text-[10px] font-bold uppercase tracking-[0.35em] transition-colors duration-700 ${ORB_COLOR[orbMode]}`}>
+                {ORB_LABEL[orbMode]}
+              </div>
+
+              {(waveActive || orbMode === 'listening') && <Waveform active={waveActive || orbMode === 'listening'} />}
+
+              {/* Live transcript */}
+              {demoRunning && (
+                <div className="w-full max-w-lg rounded-lg px-4 py-3"
+                  style={{ background: 'rgba(7,9,14,0.92)', border: '1px solid rgba(6,182,212,0.15)', backdropFilter: 'blur(16px)' }}>
+                  <div className="flex items-center gap-2 mb-2">
+                    <span className="w-1.5 h-1.5 rounded-full bg-red-500 animate-pulse" />
+                    <span className="text-[8px] font-bold uppercase tracking-[0.25em] text-slate-600">Live Transcript</span>
+                    <div className="ml-auto"><Waveform active={waveActive} /></div>
+                  </div>
+                  <p className="text-[12px] text-slate-300 leading-relaxed min-h-[2.5rem]">
+                    {transcript}
+                    {!transcriptFull && <span className="inline-block w-0.5 h-3.5 bg-cyan-400 animate-pulse ml-0.5 align-text-bottom" />}
+                    {transcriptFull && <span className="text-cyan-500 ml-1">✓</span>}
+                  </p>
+                </div>
+              )}
+
+              {/* Pipeline */}
+              {demoRunning && pipelineStep >= 0 && (
+                <div className="w-full max-w-2xl rounded-lg px-4 py-3"
+                  style={{ background: 'rgba(7,9,14,0.88)', border: '1px solid rgba(255,255,255,0.04)', backdropFilter: 'blur(8px)' }}>
+                  <div className="text-[8px] font-bold uppercase tracking-[0.25em] text-slate-700 mb-3">Processing Pipeline</div>
+                  <PipelineVisualizer
+                    activeStep={pipelineStep < PIPELINE_STEPS.length ? pipelineStep : PIPELINE_STEPS.length}
+                    stepTimes={stepTimes}
+                    demoStartMs={demoStart.current}
+                  />
+                </div>
+              )}
+            </div>
+
+            {/* Right: live feed */}
+            <div className="flex flex-col w-80 xl:w-88 shrink-0 border-l min-h-0"
+              style={{ borderColor: 'rgba(255,255,255,0.04)', background: 'rgba(7,9,14,0.6)', backdropFilter: 'blur(8px)' }}>
+              <div className="px-4 pt-4 pb-3 shrink-0 border-b" style={{ borderColor: 'rgba(255,255,255,0.04)' }}>
+                <div className="flex items-center justify-between mb-3">
+                  <span className="text-[9px] font-bold uppercase tracking-[0.2em] text-slate-600">Live Feed</span>
+                  <span className="text-[10px] text-slate-700 font-mono tabular-nums">{filtered.length}</span>
+                </div>
+                <div className="flex flex-wrap gap-1">
+                  {[
+                    { k: 'all', l: 'All' }, { k: 'critical', l: '🔴 Critical' }, { k: 'high', l: '🟠 High' },
+                    { k: 'new', l: 'New' }, { k: 'resolved', l: 'Resolved' },
+                  ].map(f => (
+                    <button key={f.k} onClick={() => setFilter(f.k)}
+                      className={`text-[9px] font-medium uppercase px-2 py-0.5 rounded border transition-all tracking-wide ${
+                        filter === f.k
+                          ? 'border-cyan-800/60 bg-cyan-950/30 text-cyan-400'
+                          : 'border-transparent text-slate-700 hover:text-slate-500'
+                      }`}>{f.l}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <div className="flex-1 overflow-y-auto px-3 py-3 flex flex-col gap-1.5 min-h-0">
+                {loading ? (
+                  [...Array(4)].map((_, i) => (
+                    <div key={i} className="h-16 rounded-lg animate-pulse" style={{ background: 'rgba(255,255,255,0.02)' }} />
+                  ))
+                ) : filtered.length === 0 ? (
+                  <div className="flex flex-col items-center justify-center flex-1 gap-2.5 text-center py-12">
+                    <div className="text-2xl opacity-20">📡</div>
+                    <div className="text-xs text-slate-600">No tips yet</div>
+                    <div className="text-[10px] text-slate-700 max-w-[140px] leading-relaxed">Logs appear in real time as calls come in</div>
+                  </div>
+                ) : (
+                  filtered.map(tip => (
+                    <TipRow key={tip.id} tip={tip} allTips={tips} onClick={() => setSelected(tip)} fresh={freshIds.has(tip.id)} />
+                  ))
+                )}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* ── Tab: Threat Intelligence (3D graph) ── */}
+        {activeTab === 'intelligence' && (
+          <div className="relative z-10 flex-1 min-h-0 overflow-hidden">
+            <ThreatGraph tips={tips} />
+          </div>
+        )}
+
+        {/* Sponsor ticker */}
+        <div className="relative z-10 shrink-0 overflow-hidden"
+          style={{ borderTop: '1px solid rgba(255,255,255,0.04)', background: 'rgba(7,9,14,0.92)', height: 32 }}>
+          <div className="flex items-center h-full" style={{ animation: 'ticker 35s linear infinite', width: 'max-content' }}>
+            {[...SPONSORS, ...SPONSORS].map((s, i) => (
+              <div key={i} className="flex items-center gap-1.5 px-5 h-full border-r shrink-0"
+                style={{ borderColor: 'rgba(255,255,255,0.04)' }}>
+                <div className="w-1 h-1 rounded-full" style={{ background: s.color }} />
+                <span className="text-[9px] font-semibold text-slate-500">{s.name}</span>
+                <span className="text-[8px] text-slate-700">{s.role}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+
+      {selected && <TipDrawer tip={selected} onClose={() => setSelected(null)} />}
+    </>
+  )
+}
