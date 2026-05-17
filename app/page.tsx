@@ -9,6 +9,7 @@ const ClaudiaOrb          = dynamic(() => import('@/components/ClaudiaOrb'),    
 const ThreatGraph         = dynamic(() => import('@/components/ThreatGraph'),         { ssr: false })
 const ThemeToggle         = dynamic(() => import('@/components/ThemeToggle'),         { ssr: false })
 const PipelineView        = dynamic(() => import('@/components/PipelineView'),        { ssr: false })
+const ThreatBreakdownModal = dynamic(() => import('@/components/ThreatBreakdownModal'), { ssr: false })
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
@@ -398,7 +399,7 @@ function CostTracker() {
 }
 
 // Tip row in feed
-function TipRow({ tip, onClick, fresh }: { tip: Tip; allTips?: Tip[]; onClick: () => void; fresh?: boolean }) {
+function TipRow({ tip, onClick, fresh, onAnalyze }: { tip: Tip; allTips?: Tip[]; onClick: () => void; fresh?: boolean; onAnalyze?: (tip: Tip) => void }) {
   const urgency = tip.urgency?.toLowerCase() ?? 'low'
   const icon    = CATEGORY_ICON[tip.category] ?? '📋'
   return (
@@ -426,6 +427,15 @@ function TipRow({ tip, onClick, fresh }: { tip: Tip; allTips?: Tip[]; onClick: (
         {tip.multilingual_call && tip.caller_language && (
           <span className="text-[9px] px-1.5 py-0.5 rounded bg-indigo-950/60 border border-indigo-800/30 text-indigo-400">
             🌐 {tip.caller_language}
+          </span>
+        )}
+        {onAnalyze && (
+          <span
+            className="ml-auto text-[9px] font-bold px-2 py-0.5 rounded opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer"
+            style={{ color: '#f87171', background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.2)' }}
+            onClick={e => { e.stopPropagation(); onAnalyze(tip) }}
+          >
+            🔬 Analyze
           </span>
         )}
       </div>
@@ -893,7 +903,7 @@ function DemoCallOverlay({ pipelineStep }: {
 }
 
 // Tip drawer (detail panel)
-function TipDrawer({ tip, onClose, onStatusChange }: { tip: Tip; onClose: () => void; onStatusChange?: (id: string, status: string) => void }) {
+function TipDrawer({ tip, onClose, onStatusChange, onAnalyze }: { tip: Tip; onClose: () => void; onStatusChange?: (id: string, status: string) => void; onAnalyze?: (tip: Tip) => void }) {
   const urgency = tip.urgency?.toLowerCase() ?? 'low'
   const icon    = CATEGORY_ICON[tip.category] ?? '📋'
   const score   = tip.ai_triage_score ?? tip.ai_score
@@ -911,6 +921,15 @@ function TipDrawer({ tip, onClose, onStatusChange }: { tip: Tip; onClose: () => 
             <span className={`text-[9px] font-bold uppercase px-2 py-0.5 rounded ${URGENCY_BG[urgency]}`}>{tip.urgency}</span>
             <span className="text-sm font-semibold text-[var(--foreground)] capitalize">{tip.category?.replace(/_/g,' ')}</span>
           </div>
+          {onAnalyze && (
+            <button
+              onClick={() => { onAnalyze(tip); onClose() }}
+              className="text-[10px] font-bold px-3 py-1 rounded-lg transition-all hover:opacity-90 flex items-center gap-1.5"
+              style={{ background: 'rgba(239,68,68,0.12)', color: '#f87171', border: '1px solid rgba(239,68,68,0.25)' }}
+            >
+              🔬 Analyze
+            </button>
+          )}
           <a
             href={`/api/report/${tip.id}`}
             target="_blank"
@@ -1058,10 +1077,17 @@ function TipDrawer({ tip, onClose, onStatusChange }: { tip: Tip; onClose: () => 
             </div>
           )}
 
-          {/* Bayesian score */}
-          {tip.bayes_probability_pct != null && (
-            <div className="rounded-lg p-4" style={{ background: 'var(--surface-2)', border: '1px solid var(--border)' }}>
-              <div className="text-[9px] font-bold uppercase tracking-[0.2em] text-zinc-400 mb-3">Bayesian Threat Probability</div>
+          {/* Bayesian score — click to open full simulation animation */}
+          {tip.bayes_probability_pct != null ? (
+            <button
+              onClick={() => onAnalyze?.(tip)}
+              className="w-full text-left rounded-lg p-4 transition-all hover:scale-[1.01] group"
+              style={{ background: 'var(--surface-2)', border: '1px solid var(--border)' }}
+            >
+              <div className="flex items-center justify-between mb-3">
+                <div className="text-[9px] font-bold uppercase tracking-[0.2em] text-zinc-400">Bayesian Threat Probability</div>
+                <span className="text-[9px] font-bold text-red-500 opacity-0 group-hover:opacity-100 transition-opacity">🔬 View Simulation →</span>
+              </div>
               <div className="flex items-center gap-3 mb-2">
                 <div className="text-2xl font-black tabular-nums" style={{ color: tip.bayes_probability_pct > 50 ? '#ef4444' : tip.bayes_probability_pct > 15 ? '#f97316' : '#22c55e' }}>
                   {tip.bayes_probability_pct}%
@@ -1073,7 +1099,20 @@ function TipDrawer({ tip, onClose, onStatusChange }: { tip: Tip; onClose: () => 
               <div className="w-full h-1.5 rounded-full bg-zinc-100 overflow-hidden">
                 <div className="h-full rounded-full transition-all duration-1000" style={{ width: `${Math.min(tip.bayes_probability_pct, 100)}%`, background: tip.bayes_probability_pct > 50 ? '#ef4444' : tip.bayes_probability_pct > 15 ? '#f97316' : '#22c55e' }} />
               </div>
-            </div>
+              {tip.bayes_ci_low_pct != null && (
+                <div className="mt-2 text-[9px] text-zinc-600 font-mono">
+                  95% CI: {tip.bayes_ci_low_pct}–{tip.bayes_ci_high_pct}%
+                </div>
+              )}
+            </button>
+          ) : onAnalyze && (
+            <button
+              onClick={() => onAnalyze(tip)}
+              className="w-full py-3 rounded-lg text-[10px] font-bold uppercase tracking-widest transition-all hover:opacity-90 flex items-center justify-center gap-2"
+              style={{ background: 'rgba(239,68,68,0.08)', color: '#f87171', border: '1px solid rgba(239,68,68,0.2)' }}
+            >
+              🔬 Run Threat Analysis
+            </button>
           )}
 
           {/* Recommended action */}
@@ -1169,6 +1208,7 @@ export default function Dashboard() {
   const [showShortcuts, setShowShortcuts] = useState(false)
   const [dismissedAlert, setDismissedAlert] = useState(false)
   const [showTipModal, setShowTipModal] = useState(false)
+  const [analysisTip, setAnalysisTip] = useState<Tip | null>(null)
 
   const [liveCall, setLiveCall] = useState<{callId: string, transcript: string, probability: number, threatLevel: number, school: string, features: string[]} | null>(null)
 
@@ -1382,6 +1422,21 @@ export default function Dashboard() {
       <div className="fixed inset-0 flex flex-col overflow-hidden" style={{ background: 'var(--background)', fontFamily: 'var(--font-roboto-slab), "Roboto Slab", Georgia, serif' }}>
 
         {liveCall && <LiveCallOverlay call={liveCall} />}
+        {analysisTip && (
+          <ThreatBreakdownModal
+            transcript={analysisTip.description ?? ''}
+            bayesProbPct={analysisTip.bayes_probability_pct}
+            bayesCiLow={analysisTip.bayes_ci_low_pct}
+            bayesCiHigh={analysisTip.bayes_ci_high_pct}
+            bayesDrivers={analysisTip.bayes_top_drivers}
+            threatLevel={analysisTip.ai_triage_score != null ? Math.round(analysisTip.ai_triage_score / 2) : null}
+            callerEmotion={analysisTip.caller_emotion}
+            callerTone={analysisTip.caller_tone}
+            threeModelConsensus={analysisTip.three_model_consensus}
+            schoolName={analysisTip.school_name}
+            onClose={() => setAnalysisTip(null)}
+          />
+        )}
         {demoRunning && (
           <DemoCallOverlay
             transcript={transcript}
@@ -1644,7 +1699,7 @@ export default function Dashboard() {
                   </div>
                 ) : (
                   filtered.map(tip => (
-                    <TipRow key={tip.id} tip={tip} allTips={tips} onClick={() => setSelected(tip)} fresh={freshIds.has(tip.id)} />
+                    <TipRow key={tip.id} tip={tip} allTips={tips} onClick={() => setSelected(tip)} fresh={freshIds.has(tip.id)} onAnalyze={t => setAnalysisTip(t)} />
                   ))
                 )}
               </div>
@@ -1668,7 +1723,14 @@ export default function Dashboard() {
 
       </div>
 
-      {selected && <TipDrawer tip={selected} onClose={() => setSelected(null)} onStatusChange={updateTipStatus} />}
+      {selected && (
+        <TipDrawer
+          tip={selected}
+          onClose={() => setSelected(null)}
+          onStatusChange={updateTipStatus}
+          onAnalyze={tip => { setSelected(null); setAnalysisTip(tip) }}
+        />
+      )}
     </>
   )
 }

@@ -43,7 +43,10 @@ export type Tip = {
   threat_window?: string | null
   dispatch_brief?: string | null
   bayes_probability_pct?: number | null
-  bayes_top_drivers?: Array<{ feature: string; keyword: string; ratio: number }> | null
+  bayes_ci_low_pct?: number | null
+  bayes_ci_high_pct?: number | null
+  bayes_features_hit?: string[] | null
+  bayes_top_drivers?: Array<{ feature?: string; keyword: string; ratio?: number; weight?: number }> | null
   three_model_consensus?: boolean | null
 }
 
