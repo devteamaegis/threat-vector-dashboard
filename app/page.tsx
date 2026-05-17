@@ -7,7 +7,6 @@ import type { OrbMode } from '@/components/ClaudiaOrb'
 
 const ClaudiaOrb          = dynamic(() => import('@/components/ClaudiaOrb'),          { ssr: false })
 const ThreatGraph         = dynamic(() => import('@/components/ThreatGraph'),         { ssr: false })
-const AgentEconomyTicker  = dynamic(() => import('@/components/AgentEconomyTicker'),  { ssr: false })
 const ThemeToggle         = dynamic(() => import('@/components/ThemeToggle'),         { ssr: false })
 
 // ─── Constants ────────────────────────────────────────────────────────────────
@@ -349,7 +348,7 @@ function IntegrationStatus() {
   }, [])
 
   return (
-    <div className="rounded-lg p-3" style={{ background: 'var(--surface-2)', border: '1px solid rgba(255,255,255,0.04)' }}>
+    <div className="rounded-lg p-3" style={{ background: 'var(--surface-2)', border: '1px solid var(--border)' }}>
       <div className="text-[9px] font-bold uppercase tracking-[0.2em] text-zinc-400 mb-2">Integration Status</div>
       <div className="grid grid-cols-2 gap-x-3 gap-y-1.5">
         {integrations.map(item => {
@@ -377,20 +376,20 @@ function CostTracker() {
   ]
   const total = costs.reduce((s, c) => s + c.cost, 0)
   return (
-    <div className="rounded-lg p-3" style={{ background: 'var(--surface-2)', border: '1px solid rgba(255,255,255,0.04)' }}>
-      <div className="flex items-center justify-between mb-2">
-        <span className="text-[9px] font-bold uppercase tracking-[0.2em] text-zinc-400">Cost Per Tip</span>
-        <span className="text-[11px] font-black text-green-400 tabular-nums">${total.toFixed(4)}</span>
+    <div className="rounded-lg p-2.5" style={{ background: 'var(--surface-2)', border: '1px solid var(--surface-2)' }}>
+      <div className="flex items-center justify-between mb-1.5">
+        <span className="text-[8px] font-bold uppercase tracking-[0.2em] text-zinc-400">Cost Per Tip</span>
+        <span className="text-[10px] font-bold text-green-400 tabular-nums">${total.toFixed(4)}</span>
       </div>
-      <div className="flex flex-col gap-1">
+      <div className="flex flex-col gap-0.5">
         {costs.map(c => (
           <div key={c.label} className="flex items-center justify-between">
-            <span className={`text-[9px] ${c.color}`}>{c.label}</span>
-            <span className="text-[9px] font-mono text-zinc-400">${c.cost.toFixed(4)}</span>
+            <span className={`text-[8px] ${c.color}`}>{c.label}</span>
+            <span className="text-[8px] font-mono text-zinc-400">${c.cost.toFixed(4)}</span>
           </div>
         ))}
       </div>
-      <div className="mt-2 pt-2 border-t text-[9px] text-zinc-400" style={{ borderColor: '#f0f0f0' }}>
+      <div className="mt-1.5 pt-1.5 border-t text-[8px] text-zinc-400" style={{ borderColor: 'var(--border)' }}>
         District billed $0.15-0.35 per tip via Stripe · Sponge handles agent micropayments
       </div>
     </div>
@@ -398,58 +397,37 @@ function CostTracker() {
 }
 
 // Tip row in feed
-function TipRow({ tip, allTips, onClick, fresh }: { tip: Tip; allTips: Tip[]; onClick: () => void; fresh?: boolean }) {
+function TipRow({ tip, onClick, fresh }: { tip: Tip; allTips?: Tip[]; onClick: () => void; fresh?: boolean }) {
   const urgency = tip.urgency?.toLowerCase() ?? 'low'
   const icon    = CATEGORY_ICON[tip.category] ?? '📋'
-  const pattern = patternBadge(tip, allTips)
   return (
     <button onClick={onClick}
       className="group w-full text-left p-3 rounded-lg transition-all duration-200 hover:scale-[1.01]"
       style={{
-        background: fresh ? 'rgba(6,182,212,0.05)' : '#ffffff',
-        border: `1px solid ${fresh ? 'rgba(6,182,212,0.35)' : urgency === 'critical' ? 'rgba(239,68,68,0.3)' : '#e4e4e7'}`,
+        background: fresh ? 'rgba(6,182,212,0.05)' : 'var(--surface)',
+        border: `1px solid ${fresh ? 'rgba(6,182,212,0.35)' : urgency === 'critical' ? 'rgba(239,68,68,0.3)' : 'var(--border)'}`,
         boxShadow: urgency === 'critical' ? '0 2px 12px rgba(239,68,68,0.12)' : '0 1px 3px rgba(0,0,0,0.04)',
       }}>
       <div className="flex items-center justify-between gap-2 mb-1.5">
         <div className="flex items-center gap-1.5 min-w-0">
           <span className="text-xs">{icon}</span>
           <span className={`shrink-0 text-[9px] font-bold uppercase px-1.5 py-0.5 rounded ${URGENCY_BG[urgency]}`}>{tip.urgency}</span>
-          <span className="text-xs text-zinc-800 font-medium truncate capitalize">{tip.category?.replace(/_/g,' ')}</span>
+          <span className="text-xs text-[var(--foreground)] font-medium truncate capitalize">{tip.category?.replace(/_/g,' ')}</span>
         </div>
         <div className="flex items-center gap-1.5 shrink-0">
           <span className={`text-[9px] font-medium uppercase px-1.5 py-0.5 rounded border ${STATUS_STYLE[tip.status?.toLowerCase() ?? 'new'] ?? STATUS_STYLE.new}`}>{tip.status}</span>
-          <span className="text-[10px] text-zinc-400 tabular-nums">{timeAgo(tip.submitted_at ?? tip.created_at)}</span>
+          <span className="text-[10px] text-[var(--muted-2)] tabular-nums">{timeAgo(tip.submitted_at ?? tip.created_at)}</span>
         </div>
       </div>
-      <p className="text-[11px] text-zinc-500 line-clamp-2 leading-relaxed">{tip.ai_summary ?? tip.description}</p>
+      <p className="text-[11px] text-[var(--muted)] line-clamp-2 leading-relaxed">{tip.ai_summary ?? tip.description}</p>
       <div className="flex items-center gap-3 mt-1.5 flex-wrap">
-        {tip.school_name && <span className="text-[10px] text-zinc-400">📍 {tip.school_name}</span>}
+        {tip.school_name && <span className="text-[10px] text-[var(--muted-2)]">📍 {tip.school_name}</span>}
         {tip.multilingual_call && tip.caller_language && (
           <span className="text-[9px] px-1.5 py-0.5 rounded bg-indigo-950/60 border border-indigo-800/30 text-indigo-400">
             🌐 {tip.caller_language}
           </span>
         )}
-        {tip.caller_emotion && (
-          <span className={`text-[9px] font-medium ${EMOTION_COLOR[tip.caller_emotion] ?? 'text-zinc-500'}`}>
-            {tip.caller_emotion}
-          </span>
-        )}
-        {tip.escalation_risk && tip.escalation_risk !== 'stable' && (
-          <span className={`text-[9px] font-bold uppercase ${ESCALATION_COLOR[tip.escalation_risk] ?? 'text-zinc-500'}`}>
-            {tip.escalation_risk}
-          </span>
-        )}
-        {tip.call_duration_seconds && (
-          <span className="text-[9px] text-zinc-400">{tip.call_duration_seconds}s call</span>
-        )}
       </div>
-      {pattern && (
-        <div className="mt-1.5">
-          <span className="text-[9px] font-semibold uppercase px-1.5 py-0.5 rounded bg-purple-950/50 border border-purple-800/30 text-purple-400 tracking-wide">
-            ⚡ {pattern}
-          </span>
-        </div>
-      )}
     </button>
   )
 }
@@ -481,18 +459,18 @@ function TipRowSkeleton() {
     <div className="w-full p-3 rounded-lg" style={{ background: 'var(--surface)', border: '1px solid var(--border)' }}>
       <div className="flex items-center justify-between gap-2 mb-2">
         <div className="flex items-center gap-2">
-          <div className="w-4 h-4 rounded bg-zinc-100 animate-pulse" />
-          <div className="w-12 h-4 rounded bg-zinc-100 animate-pulse" />
-          <div className="w-16 h-3 rounded bg-zinc-100 animate-pulse" />
+          <div className="w-4 h-4 rounded bg-[var(--surface-3)] animate-pulse" />
+          <div className="w-12 h-4 rounded bg-[var(--surface-3)] animate-pulse" />
+          <div className="w-16 h-3 rounded bg-[var(--surface-3)] animate-pulse" />
         </div>
-        <div className="w-14 h-4 rounded bg-zinc-100 animate-pulse" />
+        <div className="w-14 h-4 rounded bg-[var(--surface-3)] animate-pulse" />
       </div>
       <div className="w-full h-3 rounded bg-zinc-100 mb-1.5 animate-pulse" />
       <div className="w-2/3 h-3 rounded bg-zinc-100 mb-3 animate-pulse" />
       <div className="flex items-center gap-2">
-        <div className="w-20 h-3 rounded bg-zinc-100 animate-pulse" />
-        <div className="w-16 h-3 rounded bg-zinc-100 animate-pulse" />
-        <div className="w-16 h-3 rounded bg-zinc-100 animate-pulse" />
+        <div className="w-20 h-3 rounded bg-[var(--surface-3)] animate-pulse" />
+        <div className="w-16 h-3 rounded bg-[var(--surface-3)] animate-pulse" />
+        <div className="w-16 h-3 rounded bg-[var(--surface-3)] animate-pulse" />
       </div>
     </div>
   )
@@ -568,94 +546,48 @@ function LiveCallOverlay({ call }: { call: { callId: string, transcript: string,
   )
 }
 
-// Demo call transcript popup — floats top-right during demo
-function DemoCallOverlay({ transcript, transcriptFull, waveActive, pipelineStep }: {
+// Demo call pipeline overlay — top-right, pipeline steps only (transcript shown in center)
+function DemoCallOverlay({ pipelineStep }: {
   transcript: string
   transcriptFull: boolean
   waveActive: boolean
   pipelineStep: number
 }) {
-  if (!transcript && pipelineStep < 0) return null
-  const stepsDone = pipelineStep >= 0 ? Math.min(pipelineStep, PIPELINE_STEPS.length) : 0
-  const pct = transcript.length > 0
-    ? Math.min(95, (transcript.split(' ').length / DEMO_WORDS.length) * 45)
-    : 0
+  if (pipelineStep < 0) return null
+  const stepsDone = Math.min(pipelineStep, PIPELINE_STEPS.length)
   return (
-    <div className="fixed top-16 right-4 z-[110] w-80 flex flex-col gap-2 pointer-events-none">
-      {/* Transcript card */}
-      <div className="rounded-xl overflow-hidden shadow-2xl"
+    <div className="fixed top-16 right-4 z-[110] w-72 pointer-events-none">
+      {/* Pipeline status card */}
+      <div className="rounded-xl overflow-hidden shadow-xl"
         style={{
-          background: 'rgba(6,8,13,0.96)',
-          backdropFilter: 'blur(32px)',
-          border: '1px solid rgba(6,182,212,0.35)',
-          boxShadow: '0 0 32px rgba(6,182,212,0.12)',
-          animation: 'slideDownOverlay 0.35s cubic-bezier(0.34,1.4,0.64,1)',
+          background: 'rgba(6,8,13,0.94)',
+          backdropFilter: 'blur(24px)',
+          border: '1px solid rgba(255,255,255,0.07)',
+          animation: 'slideDownOverlay 0.3s cubic-bezier(0.34,1.4,0.64,1)',
         }}>
-        {/* Header */}
-        <div className="flex items-center gap-2 px-4 py-2.5"
-          style={{ borderBottom: '1px solid rgba(6,182,212,0.15)', background: 'rgba(6,182,212,0.07)' }}>
-          <span className="w-2 h-2 rounded-full bg-red-500 animate-pulse" />
-          <span className="text-[10px] font-bold uppercase tracking-widest text-red-400">Live Call</span>
-          <span className="ml-auto text-[9px] text-zinc-400">Westbrook Academy</span>
-          <Waveform active={waveActive} />
-        </div>
-
-        {/* Transcript */}
-        <div className="px-4 py-3">
-          <div className="text-[9px] uppercase tracking-widest text-zinc-500 mb-1.5">Transcript</div>
-          <p className="text-[12px] text-zinc-200 leading-relaxed min-h-[2.5rem]">
-            {transcript}
-            {!transcriptFull && transcript.length > 0 && (
-              <span className="inline-block w-0.5 h-3.5 bg-cyan-400 animate-pulse ml-0.5 align-text-bottom" />
-            )}
-            {transcriptFull && <span className="text-cyan-400 ml-1.5 text-[11px]">✓ complete</span>}
-          </p>
-        </div>
-
-        {/* Progress bar */}
-        {transcript.length > 0 && (
-          <div className="px-4 pb-3">
-            <div className="w-full h-1 rounded-full bg-zinc-800 overflow-hidden">
-              <div className="h-full rounded-full transition-all duration-300"
-                style={{ width: `${pct}%`, background: 'linear-gradient(90deg, #06b6d4, #3b82f6)' }} />
-            </div>
+        <div className="px-4 py-2.5">
+          <div className="text-[9px] uppercase tracking-widest text-zinc-500 mb-2">AI Pipeline</div>
+          <div className="flex items-center gap-1 flex-wrap">
+            {PIPELINE_STEPS.map((step, i) => {
+              const done   = i < pipelineStep
+              const active = i === pipelineStep
+              return (
+                <div key={step.id} className={`flex items-center gap-1 px-1.5 py-0.5 rounded text-[9px] transition-all duration-300 ${
+                  active ? 'bg-cyan-950/80 text-cyan-400 border border-cyan-500/40' :
+                  done   ? 'text-zinc-500' : 'text-zinc-700'
+                }`}>
+                  <span>{step.icon}</span>
+                  {active && <span className="font-bold">{step.label}</span>}
+                  {done && <span className="text-green-500 text-[8px]">✓</span>}
+                </div>
+              )
+            })}
           </div>
-        )}
+          {stepsDone === PIPELINE_STEPS.length && (
+            <div className="mt-2 text-[10px] font-bold text-green-400 tracking-wide">✓ PRINCIPAL NOTIFIED</div>
+          )}
+        </div>
       </div>
-
-      {/* Pipeline status card — appears when processing starts */}
-      {pipelineStep >= 0 && (
-        <div className="rounded-xl overflow-hidden shadow-xl"
-          style={{
-            background: 'rgba(6,8,13,0.94)',
-            backdropFilter: 'blur(24px)',
-            border: '1px solid rgba(255,255,255,0.07)',
-            animation: 'slideDownOverlay 0.3s cubic-bezier(0.34,1.4,0.64,1)',
-          }}>
-          <div className="px-4 py-2.5">
-            <div className="text-[9px] uppercase tracking-widest text-zinc-500 mb-2">AI Pipeline</div>
-            <div className="flex items-center gap-1 flex-wrap">
-              {PIPELINE_STEPS.map((step, i) => {
-                const done   = i < pipelineStep
-                const active = i === pipelineStep
-                return (
-                  <div key={step.id} className={`flex items-center gap-1 px-1.5 py-0.5 rounded text-[9px] transition-all duration-300 ${
-                    active ? 'bg-cyan-950/80 text-cyan-400 border border-cyan-500/40' :
-                    done   ? 'text-zinc-500' : 'text-zinc-700'
-                  }`}>
-                    <span>{step.icon}</span>
-                    {active && <span className="font-bold">{step.label}</span>}
-                    {done && <span className="text-green-500 text-[8px]">✓</span>}
-                  </div>
-                )
-              })}
-            </div>
-            {stepsDone === PIPELINE_STEPS.length && (
-              <div className="mt-2 text-[10px] font-bold text-green-400 tracking-wide">✓ PRINCIPAL NOTIFIED</div>
-            )}
-          </div>
-        </div>
-      )}
     </div>
   )
 }
@@ -677,7 +609,7 @@ function TipDrawer({ tip, onClose, onStatusChange }: { tip: Tip; onClose: () => 
           <div className="flex items-center gap-2">
             <span>{icon}</span>
             <span className={`text-[9px] font-bold uppercase px-2 py-0.5 rounded ${URGENCY_BG[urgency]}`}>{tip.urgency}</span>
-            <span className="text-sm font-semibold text-zinc-900 capitalize">{tip.category?.replace(/_/g,' ')}</span>
+            <span className="text-sm font-semibold text-[var(--foreground)] capitalize">{tip.category?.replace(/_/g,' ')}</span>
           </div>
           <a
             href={`/api/report/${tip.id}`}
@@ -702,7 +634,7 @@ function TipDrawer({ tip, onClose, onStatusChange }: { tip: Tip; onClose: () => 
 
           {/* School */}
           {tip.school_name && (
-            <div className="flex items-center gap-2 text-sm text-zinc-800">
+            <div className="flex items-center gap-2 text-sm text-[var(--foreground-2)]">
               <span className="text-zinc-400">📍</span><span className="font-medium">{tip.school_name}</span>
             </div>
           )}
@@ -711,7 +643,7 @@ function TipDrawer({ tip, onClose, onStatusChange }: { tip: Tip; onClose: () => 
           {tip.ai_summary && (
             <div className="rounded-lg p-4" style={{ background: 'rgba(6,182,212,0.04)', border: '1px solid rgba(6,182,212,0.12)' }}>
               <div className="text-[9px] font-bold uppercase tracking-[0.2em] text-cyan-700 mb-2">AI Assessment</div>
-              <p className="text-sm text-zinc-900 leading-relaxed">{tip.ai_summary}</p>
+              <p className="text-sm text-[var(--foreground)] leading-relaxed">{tip.ai_summary}</p>
             </div>
           )}
 
@@ -747,7 +679,7 @@ function TipDrawer({ tip, onClose, onStatusChange }: { tip: Tip; onClose: () => 
 
           {/* Caller analysis */}
           {(tip.caller_emotion || tip.caller_tone || tip.escalation_risk) && (
-            <div className="rounded-lg p-4" style={{ background: '#f9f9f9', border: '1px solid rgba(255,255,255,0.05)' }}>
+            <div className="rounded-lg p-4" style={{ background: 'var(--surface-2)', border: '1px solid var(--border)' }}>
               <div className="text-[9px] font-bold uppercase tracking-[0.2em] text-zinc-400 mb-3">Caller Analysis</div>
               <div className="grid grid-cols-3 gap-3 text-xs">
                 {tip.caller_emotion && (
@@ -759,7 +691,7 @@ function TipDrawer({ tip, onClose, onStatusChange }: { tip: Tip; onClose: () => 
                 {tip.caller_tone && (
                   <div>
                     <div className="text-zinc-400 mb-0.5 text-[9px]">Tone</div>
-                    <div className="text-zinc-800 capitalize">{tip.caller_tone}</div>
+                    <div className="text-[var(--foreground-2)] capitalize">{tip.caller_tone}</div>
                   </div>
                 )}
                 {tip.escalation_risk && (
@@ -828,7 +760,7 @@ function TipDrawer({ tip, onClose, onStatusChange }: { tip: Tip; onClose: () => 
 
           {/* Bayesian score */}
           {tip.bayes_probability_pct != null && (
-            <div className="rounded-lg p-4" style={{ background: '#f9f9f9', border: '1px solid rgba(255,255,255,0.05)' }}>
+            <div className="rounded-lg p-4" style={{ background: 'var(--surface-2)', border: '1px solid var(--border)' }}>
               <div className="text-[9px] font-bold uppercase tracking-[0.2em] text-zinc-400 mb-3">Bayesian Threat Probability</div>
               <div className="flex items-center gap-3 mb-2">
                 <div className="text-2xl font-black tabular-nums" style={{ color: tip.bayes_probability_pct > 50 ? '#ef4444' : tip.bayes_probability_pct > 15 ? '#f97316' : '#22c55e' }}>
@@ -860,20 +792,20 @@ function TipDrawer({ tip, onClose, onStatusChange }: { tip: Tip; onClose: () => 
 
           {/* Data grid */}
           <div className="rounded-lg p-4 grid grid-cols-2 gap-4 text-xs"
-            style={{ background: 'var(--surface-2)', border: '1px solid rgba(255,255,255,0.04)' }}>
+            style={{ background: 'var(--surface-2)', border: '1px solid var(--border)' }}>
             {[
               ['Severity',  tip.severity ?? tip.urgency],
               ['Anonymous', tip.is_anonymous ? 'Yes' : 'No'],
               ['Timeline',  tip.timeline ?? '–'],
               ['AI Score',  `${score ?? '–'} / 10`],
             ].map(([k, v]) => (
-              <div key={k}><div className="text-zinc-400 mb-0.5 text-[9px]">{k}</div><div className="text-zinc-800 font-mono capitalize">{v}</div></div>
+              <div key={k}><div className="text-zinc-400 mb-0.5 text-[9px]">{k}</div><div className="text-[var(--foreground-2)] font-mono capitalize">{v}</div></div>
             ))}
           </div>
 
           <ScoreBar score={score} />
           {onStatusChange && (tip.status === 'new' || tip.status === 'reviewing') && (
-            <div className="pt-4 border-t" style={{ borderColor: '#f0f0f0' }}>
+            <div className="pt-4 border-t" style={{ borderColor: 'var(--border)' }}>
               <button
                 onClick={() => onStatusChange(tip.id, tip.status === 'new' ? 'reviewing' : 'dismissed')}
                 className={`w-full py-2.5 rounded-lg text-xs font-bold uppercase tracking-widest transition-colors ${
@@ -897,7 +829,7 @@ function Stat({ label, value, red, sub }: { label: string; value: number; red?: 
   return (
     <div className="flex flex-col gap-0.5">
       <div className="text-[9px] font-semibold uppercase tracking-[0.2em] text-zinc-400">{label}</div>
-      <div className={`text-3xl font-black tabular-nums leading-none ${red && value > 0 ? 'text-red-500' : 'text-zinc-900'}`}>{value}</div>
+      <div className={`text-3xl font-black tabular-nums leading-none ${red && value > 0 ? 'text-red-500' : 'text-[var(--foreground)]'}`}>{value}</div>
       {sub && <div className="text-[9px] text-zinc-400">{sub}</div>}
     </div>
   )
@@ -912,7 +844,7 @@ function LiveCounter() {
   }, [])
   return (
     <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-md"
-      style={{ background: '#f9f9f9', border: '1px solid rgba(255,255,255,0.04)' }}>
+      style={{ background: 'var(--surface-2)', border: '1px solid rgba(255,255,255,0.04)' }}>
       <span className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse" />
       <span className="text-[10px] font-mono text-zinc-500 tabular-nums">{n.toLocaleString()}</span>
       <span className="text-[9px] text-zinc-400">calls</span>
@@ -1252,27 +1184,13 @@ export default function Dashboard() {
                     Pricing
                   </button>
                 </div>
-                <div className="flex gap-6 flex-wrap">
+                <div className="flex gap-6 flex-wrap" style={{ paddingBottom: '1.25rem', borderBottom: '1px solid var(--border)' }}>
                   <Stat label="Total"    value={tips.length} sub="tips received" />
                   <Stat label="Critical" value={critical} red sub="need action" />
                   <Stat label="New"      value={newCount} sub="unreviewed" />
                   <Stat label="Resolved" value={resolved} sub="closed" />
                 </div>
 
-                <div className="flex flex-col gap-3 pt-5 border-t" style={{ borderColor: '#f0f0f0' }}>
-                  <div className="text-[9px] font-semibold uppercase tracking-[0.2em] text-zinc-400">Metrics</div>
-                  {[
-                    { k: 'Avg Triage',  v: '8.2s',               c: 'text-cyan-500'  },
-                    { k: 'AI Accuracy', v: '94%',                 c: 'text-green-500' },
-                    { k: 'Anonymity',   v: '100%',                c: 'text-zinc-800' },
-                    { k: 'Channels',    v: 'Voice · SMS · Email', c: 'text-zinc-500' },
-                  ].map(m => (
-                    <div key={m.k}>
-                      <div className="text-[8px] text-zinc-400 uppercase tracking-wide mb-0.5">{m.k}</div>
-                      <div className={`text-[11px] font-semibold ${m.c}`}>{m.v}</div>
-                    </div>
-                  ))}
-                </div>
               </div>
 
               <div className="flex flex-col gap-3">
@@ -1297,6 +1215,43 @@ export default function Dashboard() {
               </div>
 
               {(waveActive || orbMode === 'listening') && <Waveform active={waveActive || orbMode === 'listening'} />}
+
+              {/* Live transcript card — shown prominently in center during demo */}
+              {demoRunning && (transcript.length > 0 || transcriptFull) && (
+                <div className="w-full max-w-2xl rounded-xl overflow-hidden shadow-2xl"
+                  style={{
+                    background: 'rgba(6,8,13,0.96)',
+                    backdropFilter: 'blur(32px)',
+                    border: '1px solid rgba(6,182,212,0.35)',
+                    boxShadow: '0 0 32px rgba(6,182,212,0.10)',
+                  }}>
+                  <div className="flex items-center gap-2 px-5 py-3"
+                    style={{ borderBottom: '1px solid rgba(6,182,212,0.15)', background: 'rgba(6,182,212,0.07)' }}>
+                    <span className="w-2 h-2 rounded-full bg-red-500 animate-pulse" />
+                    <span className="text-[10px] font-bold uppercase tracking-widest text-red-400">Live Call</span>
+                    <span className="ml-auto text-[9px] text-zinc-400">Westbrook Academy</span>
+                    <Waveform active={waveActive} />
+                  </div>
+                  <div className="px-5 py-4">
+                    <div className="text-[9px] uppercase tracking-widest text-zinc-500 mb-2">Transcript</div>
+                    <p className="text-sm text-zinc-100 leading-relaxed">
+                      {transcript}
+                      {!transcriptFull && transcript.length > 0 && (
+                        <span className="inline-block w-0.5 h-4 bg-cyan-400 animate-pulse ml-0.5 align-text-bottom" />
+                      )}
+                      {transcriptFull && <span className="text-cyan-400 ml-2 text-[11px]">✓ complete</span>}
+                    </p>
+                  </div>
+                  {transcript.length > 0 && (
+                    <div className="px-5 pb-4">
+                      <div className="w-full h-1 rounded-full bg-zinc-800 overflow-hidden">
+                        <div className="h-full rounded-full transition-all duration-300"
+                          style={{ width: `${Math.min(95, (transcript.split(' ').length / DEMO_WORDS.length) * 100)}%`, background: 'linear-gradient(90deg, #06b6d4, #3b82f6)' }} />
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
 
               {/* Pipeline */}
               {demoRunning && pipelineStep >= 0 && (
@@ -1363,25 +1318,6 @@ export default function Dashboard() {
           </div>
         )}
 
-        {/* Agent Economy ticker — Sponge micropayments */}
-        <div className="relative z-10 shrink-0 px-4 py-2" style={{ borderTop: '1px solid var(--border)' }}>
-          <AgentEconomyTicker />
-        </div>
-
-        {/* Sponsor ticker */}
-        <div className="relative z-10 shrink-0 overflow-hidden"
-          style={{ borderTop: '1px solid var(--border)', background: 'var(--background)', height: 32 }}>
-          <div className="flex items-center h-full" style={{ animation: 'ticker 35s linear infinite', width: 'max-content' }}>
-            {[...SPONSORS, ...SPONSORS].map((s, i) => (
-              <div key={i} className="flex items-center gap-1.5 px-6 h-full border-r shrink-0"
-                style={{ borderColor: '#f0f0f0' }}>
-                <div className="w-1 h-1 rounded-full" style={{ background: s.color }} />
-                <span className="text-[11px] font-medium text-zinc-500">{s.name}</span>
-                <span className="text-[11px] font-medium text-zinc-400">{s.role}</span>
-              </div>
-            ))}
-          </div>
-        </div>
       </div>
 
       {selected && <TipDrawer tip={selected} onClose={() => setSelected(null)} onStatusChange={updateTipStatus} />}

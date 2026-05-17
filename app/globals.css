@@ -44,6 +44,14 @@ body {
   transition: background 0.2s ease, color 0.2s ease;
 }
 
+/* Force all text to use CSS vars — fixes dark mode contrast */
+h1, h2, h3, h4, h5, h6, p, span, div, button, label {
+  color: inherit;
+}
+button {
+  font-family: var(--font-roboto-slab), "Roboto Slab", Georgia, serif;
+}
+
 /* ── Scrollbars ─────────────────────────────────────────────────────────────── */
 ::-webkit-scrollbar { width: 4px; }
 ::-webkit-scrollbar-track { background: var(--surface-2); }
