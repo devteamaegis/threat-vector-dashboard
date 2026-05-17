@@ -1008,26 +1008,26 @@ export default function Dashboard() {
     type()
   }, [demoRunning])
 
-  // Only show tips with meaningful content in the live feed
-  const meaningfulTips = tips.filter(t => {
-    const text = t.ai_summary ?? t.description ?? ''
-    return text.trim().length > 12
-  })
+  // Only show tips that came through the real AI pipeline:
+  // call_duration_seconds is only set by AgentPhone on live calls — seed data never has it.
+  const realTips = tips.filter(t =>
+    t.call_duration_seconds != null && t.call_duration_seconds > 0
+  )
   const filtered = filter === 'all'
-    ? meaningfulTips
-    : meaningfulTips.filter(t => t.urgency === filter || t.status === filter || t.category === filter)
+    ? realTips
+    : realTips.filter(t => t.urgency === filter || t.status === filter || t.category === filter)
 
-  const critical  = tips.filter(t => t.urgency === 'critical').length
-  const newCount  = tips.filter(t => t.status === 'new').length
-  const resolved  = tips.filter(t => t.status === 'resolved').length
+  const critical  = realTips.filter(t => t.urgency === 'critical').length
+  const newCount  = realTips.filter(t => t.status === 'new').length
+  const resolved  = realTips.filter(t => t.status === 'resolved').length
 
-  // SRO / principal stats
-  const actionNeeded   = tips.filter(t => (t.status === 'new' || t.status === 'reviewing') && (t.urgency === 'critical' || t.urgency === 'high')).length
-  const escalating     = tips.filter(t => t.escalation_risk === 'imminent' || t.escalation_risk === 'escalating').length
-  const weaponCount    = tips.filter(t => t.category === 'weapon').length
-  const multilingualCount = tips.filter(t => t.multilingual_call).length
-  const schoolsAffected = new Set(tips.map(t => t.school_name).filter(Boolean)).size
-  const thisWeek = tips.filter(t => new Date(t.submitted_at ?? t.created_at).getTime() > Date.now() - 7 * 24 * 60 * 60 * 1000).length
+  // SRO / principal stats — based on real pipeline tips only
+  const actionNeeded      = realTips.filter(t => (t.status === 'new' || t.status === 'reviewing') && (t.urgency === 'critical' || t.urgency === 'high')).length
+  const escalating        = realTips.filter(t => t.escalation_risk === 'imminent' || t.escalation_risk === 'escalating').length
+  const weaponCount       = realTips.filter(t => t.category === 'weapon').length
+  const multilingualCount = realTips.filter(t => t.multilingual_call).length
+  const schoolsAffected   = new Set(realTips.map(t => t.school_name).filter(Boolean)).size
+  const thisWeek          = realTips.filter(t => new Date(t.submitted_at ?? t.created_at).getTime() > Date.now() - 7 * 24 * 60 * 60 * 1000).length
 
   const crossSchoolAlert = tips.find(t => t.cross_school_alert && new Date(t.submitted_at ?? t.created_at).getTime() > Date.now() - 7 * 24 * 60 * 60 * 1000)?.cross_school_alert
 
