@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect } from 'react'
 
 // ── Node definitions ──────────────────────────────────────────────────────────
 
@@ -10,8 +10,8 @@ interface PipelineNode {
   sublabel: string
   icon: string
   layer: 'input' | 'ingest' | 'process' | 'enrich' | 'output'
-  col: number   // column index (0-based)
-  row: number   // row index within column (0-based)
+  col: number
+  row: number
   color: string
   sponsor?: string
   detail: string
@@ -20,414 +20,374 @@ interface PipelineNode {
 }
 
 const NODES: PipelineNode[] = [
-  // ── INPUT ────────────────────────────────────────────────────────────────
   {
-    id: 'caller',
-    label: 'Anonymous Caller',
-    sublabel: 'Any language · 70+',
-    icon: '📞',
-    layer: 'input',
-    col: 0, row: 0,
-    color: '#06b6d4',
-    detail: 'Anyone can call the Threat Vector hotline anonymously. The caller is never identified — no name, no number. They can speak in any of 70+ languages and the system processes it natively.',
+    id: 'caller', label: 'Anonymous Caller', sublabel: 'Any language · 70+', icon: '📞',
+    layer: 'input', col: 0, row: 0, color: '#06b6d4',
+    detail: 'Anyone calls the Kairos hotline anonymously. No name, no number. 70+ languages supported — processed natively by Gemini Live, no pre-translation.',
   },
-  // ── INGEST ───────────────────────────────────────────────────────────────
   {
-    id: 'agentphone',
-    label: 'AgentPhone',
-    sublabel: 'Voice AI · STT',
-    icon: '🎙️',
-    layer: 'ingest',
-    col: 1, row: 0,
-    color: '#06b6d4',
-    sponsor: 'AgentPhone',
-    latency: '<2s',
-    detail: 'AgentPhone hosts the AI voice agent. It handles incoming calls, runs speech-to-text transcription in real time, and posts the completed transcript to the Threat Vector webhook endpoint.',
+    id: 'agentphone', label: 'AgentPhone', sublabel: 'Voice AI · STT', icon: '🎙️',
+    layer: 'ingest', col: 1, row: 0, color: '#06b6d4', sponsor: 'AgentPhone', latency: '<2s',
+    detail: 'AgentPhone hosts the AI voice agent. Handles incoming calls, real-time speech-to-text, and POSTs the transcript to the Kairos webhook.',
     prize: 'Best Use of AgentPhone',
   },
-  // ── PROCESS ──────────────────────────────────────────────────────────────
   {
-    id: 'gemini_live',
-    label: 'Gemini Live',
-    sublabel: 'Multilingual · Translate',
-    icon: '🌐',
-    layer: 'process',
-    col: 2, row: 0,
-    color: '#4285f4',
-    sponsor: 'Google DeepMind',
-    latency: '280ms',
-    detail: 'Gemini 2.0 Flash Live API streams the transcript in real time. It detects the spoken language, provides a full English translation, and returns an initial threat level (1-5). The only school safety system that handles non-English callers natively.',
+    id: 'gemini_live', label: 'Gemini Live', sublabel: 'Multilingual · Translate', icon: '🌐',
+    layer: 'process', col: 2, row: 0, color: '#4285f4', sponsor: 'Google DeepMind', latency: '280ms',
+    detail: 'Gemini 2.0 Flash Live API streams in real time. Detects language, provides English translation, returns initial threat level 1-5. First school safety platform handling non-English callers natively.',
     prize: 'Best Use of Gemini',
   },
   {
-    id: 'claude',
-    label: 'Claude Sonnet',
-    sublabel: 'Threat classify · Level 1-5',
-    icon: '🧠',
-    layer: 'process',
-    col: 2, row: 1,
-    color: '#f97316',
-    sponsor: 'Anthropic',
-    latency: '2.4s',
-    detail: 'Claude performs deep semantic threat assessment: caller emotion analysis, credibility scoring, key-fact extraction, escalation risk classification, and a recommended action. Returns a structured JSON object.',
+    id: 'claude', label: 'Claude Sonnet', sublabel: 'Threat classify · Level 1-5', icon: '🧠',
+    layer: 'process', col: 2, row: 1, color: '#f97316', sponsor: 'Anthropic', latency: '2.4s',
+    detail: 'Deep semantic threat assessment: emotion analysis, credibility scoring, key-fact extraction, escalation risk, and recommended action. Returns structured JSON.',
   },
   {
-    id: 'gemini_verify',
-    label: 'Gemini Flash',
-    sublabel: 'Consensus verify · Second opinion',
-    icon: '✦',
-    layer: 'process',
-    col: 2, row: 2,
-    color: '#4285f4',
-    sponsor: 'Google DeepMind',
-    latency: '3.1s',
-    detail: 'Gemini 2.5 Flash independently re-scores the threat without seeing Claude\'s answer. If both models agree within 1 level, a CONSENSUS is established — the higher level locks in as the final score. Divergence triggers a manual review flag.',
+    id: 'gemini_verify', label: 'Gemini Flash', sublabel: 'Consensus verify', icon: '✦',
+    layer: 'process', col: 2, row: 2, color: '#4285f4', sponsor: 'Google DeepMind', latency: '3.1s',
+    detail: 'Independently re-scores without seeing Claude\'s answer. If both models agree within 1 level, CONSENSUS locks in the higher score. Divergence triggers manual review.',
     prize: 'Best Use of Gemini',
   },
   {
-    id: 'bayes',
-    label: 'Bayesian Monte Carlo',
-    sublabel: 'Probability · Confidence',
-    icon: '📊',
-    layer: 'process',
-    col: 2, row: 3,
-    color: '#8b5cf6',
-    latency: '50ms',
-    detail: 'A Bayesian network combines Claude\'s level, Gemini\'s level, confidence scores, and historical base rates. Monte Carlo sampling over 1000 iterations produces a probability distribution — the final threat score is the posterior mean.',
+    id: 'bayes', label: 'Bayesian Monte Carlo', sublabel: 'Probability · Confidence', icon: '📊',
+    layer: 'process', col: 2, row: 3, color: '#8b5cf6', latency: '50ms',
+    detail: 'Combines Claude + Gemini scores with confidence and historical base rates. 1000 Monte Carlo samples → posterior mean = final threat score.',
   },
-  // ── ENRICH ───────────────────────────────────────────────────────────────
   {
-    id: 'moss',
-    label: 'Moss',
-    sublabel: 'Semantic search · Context',
-    icon: '🔍',
-    layer: 'enrich',
-    col: 3, row: 0,
-    color: '#6366f1',
-    sponsor: 'Moss',
-    latency: '620ms',
-    detail: 'Moss performs semantic vector search over the tip database to surface similar past threats. Returns top-K contextually related incidents to inform the AI assessment. Enables cross-school pattern detection.',
+    id: 'moss', label: 'Moss', sublabel: 'Semantic search · Context', icon: '🔍',
+    layer: 'enrich', col: 3, row: 0, color: '#6366f1', sponsor: 'Moss', latency: '620ms',
+    detail: 'Semantic vector search over past threats. Returns top-K similar incidents to inform AI assessment. Enables cross-school pattern detection.',
     prize: 'Best Use of Moss',
   },
   {
-    id: 'supermemory',
-    label: 'Supermemory',
-    sublabel: 'Pattern memory · History',
-    icon: '🧬',
-    layer: 'enrich',
-    col: 3, row: 1,
-    color: '#f59e0b',
-    sponsor: 'Supermemory',
-    latency: '4.1s',
-    detail: 'Supermemory persists structured memories about threat patterns, repeat schools, and behavioral escalations. The AI can recall "this school has had 3 weapon tips this semester" — enabling longitudinal threat tracking across sessions.',
+    id: 'supermemory', label: 'Supermemory', sublabel: 'Pattern memory · History', icon: '🧬',
+    layer: 'enrich', col: 3, row: 1, color: '#f59e0b', sponsor: 'Supermemory', latency: '4.1s',
+    detail: 'Persists structured memories about threat patterns and repeat schools. AI can recall "this school had 3 weapon tips this semester" across sessions.',
     prize: 'Best Use of Supermemory',
   },
   {
-    id: 'browseruse',
-    label: 'Browser Use',
-    sublabel: 'OSINT · Background check',
-    icon: '🌍',
-    layer: 'enrich',
-    col: 3, row: 2,
-    color: '#10b981',
-    latency: '8s',
-    detail: 'For Level 4-5 threats, Browser Use autonomously searches public social media and news sources for corroborating evidence — recent posts, local news, school incidents. Provides OSINT context without human involvement.',
+    id: 'browseruse', label: 'Browser Use', sublabel: 'OSINT · Background check', icon: '🌍',
+    layer: 'enrich', col: 3, row: 2, color: '#10b981', latency: '8s',
+    detail: 'For Level 4-5 threats, autonomously searches public social media and local news for corroborating evidence. OSINT without human involvement.',
     prize: 'Best Use of Browser Use ($3k)',
   },
-  // ── OUTPUT ───────────────────────────────────────────────────────────────
   {
-    id: 'supabase',
-    label: 'Supabase',
-    sublabel: 'Realtime DB · Dashboard',
-    icon: '🗄️',
-    layer: 'output',
-    col: 4, row: 0,
-    color: '#10b981',
-    sponsor: 'Supabase',
-    latency: '3.4s',
-    detail: 'The full tip payload (25+ structured fields) is written to Supabase Postgres. Realtime subscriptions push the tip to the live dashboard instantly. Historical data powers the Threat Intelligence graph with 10,000 seeded nodes.',
+    id: 'supabase', label: 'Supabase', sublabel: 'Realtime DB · Dashboard', icon: '🗄️',
+    layer: 'output', col: 4, row: 0, color: '#10b981', sponsor: 'Supabase', latency: '3.4s',
+    detail: '25+ structured fields written to Postgres. Realtime subscriptions push to the live dashboard instantly. 10,000 seeded nodes power the Threat Intelligence graph.',
   },
   {
-    id: 'twilio',
-    label: 'Twilio SMS',
-    sublabel: 'Principal alert · Immediate',
-    icon: '📱',
-    layer: 'output',
-    col: 4, row: 1,
-    color: '#ef4444',
-    latency: '4.6s',
-    detail: 'For Level 3+ threats, Twilio immediately sends an SMS to the school principal with threat level, school name, caller emotion, and recommended action. First responder contact in under 5 seconds from call end.',
+    id: 'twilio', label: 'Twilio SMS', sublabel: 'Principal alert · Immediate', icon: '📱',
+    layer: 'output', col: 4, row: 1, color: '#ef4444', latency: '4.6s',
+    detail: 'For Level 3+ threats: immediate SMS to the principal with threat level, school name, emotion, and recommended action. First responder notified in <5s.',
   },
   {
-    id: 'agentmail',
-    label: 'AgentMail',
-    sublabel: 'Safety officer brief · Email',
-    icon: '✉️',
-    layer: 'output',
-    col: 4, row: 2,
-    color: '#8b5cf6',
-    sponsor: 'AgentMail',
-    latency: '5.2s',
-    detail: 'AgentMail sends a structured intelligence brief to the district safety officer — formatted report with full transcript, AI analysis, confidence scores, supporting facts, and recommended next steps. Inbox: ishaan-3830@agentmail.to.',
+    id: 'agentmail', label: 'AgentMail', sublabel: 'Safety officer brief', icon: '✉️',
+    layer: 'output', col: 4, row: 2, color: '#8b5cf6', sponsor: 'AgentMail', latency: '5.2s',
+    detail: 'Structured intelligence brief to district safety officer — full transcript, AI analysis, confidence scores, key facts, and next steps.',
     prize: 'Best Use of AgentMail',
   },
   {
-    id: 'aws',
-    label: 'AWS S3',
-    sublabel: 'Immutable archive · Audit',
-    icon: '☁️',
-    layer: 'output',
-    col: 4, row: 3,
-    color: '#ff9900',
-    latency: '3.7s',
-    detail: 'Every call transcript is archived to AWS S3 as an immutable record. Bucket: threat-vector-calls. This satisfies compliance requirements — a permanent, tamper-proof log of every threat report, including the raw AI output.',
+    id: 'aws', label: 'AWS S3', sublabel: 'Immutable archive · Audit', icon: '☁️',
+    layer: 'output', col: 4, row: 3, color: '#ff9900', latency: '3.7s',
+    detail: 'Every transcript archived to S3 as an immutable compliance record. Permanent, tamper-proof log of every threat including raw AI output.',
   },
   {
-    id: 'sponge',
-    label: 'Sponge',
-    sublabel: 'Micropayments · Per-tip billing',
-    icon: '💳',
-    layer: 'output',
-    col: 4, row: 4,
-    color: '#14b8a6',
-    sponsor: 'Sponge',
-    latency: '5.8s',
-    detail: 'Sponge handles per-tip micropayments from the school district. Each tip costs the district a fraction of a cent — pay-as-you-go safety infrastructure. No subscription, no upfront cost. Districts only pay for actual threats processed.',
+    id: 'sponge', label: 'Sponge', sublabel: 'Micropayments · Per-tip', icon: '💳',
+    layer: 'output', col: 4, row: 4, color: '#14b8a6', sponsor: 'Sponge', latency: '5.8s',
+    detail: 'Per-tip micropayments from the school district. Pay-as-you-go safety — districts only pay for actual threats processed, fractions of a cent each.',
     prize: 'Best Use of Sponge',
   },
 ]
 
-// ── Layout math ───────────────────────────────────────────────────────────────
+// ── Layout constants ───────────────────────────────────────────────────────────
+const NODE_W  = 190
+const NODE_H  = 88
+const COL_X   = [60, 310, 570, 840, 1100]
+const ROW_H   = 108
+const ROW_Y0  = 48
+const SVG_W   = 1360
+const SVG_H   = 540
 
 const COL_LABELS = ['INPUT', 'INGEST', 'PROCESSING', 'ENRICHMENT', 'OUTPUT']
 const COL_COLORS = ['#06b6d4', '#06b6d4', '#4285f4', '#8b5cf6', '#10b981']
 
-const COL_X = [80, 230, 420, 620, 820]   // px from left of SVG canvas
-const ROW_Y_BASE = 60  // px top of first row
-const ROW_H = 90       // px between rows
-const NODE_W = 120
-const NODE_H = 64
+const EDGES: [string, string][] = [
+  ['caller', 'agentphone'],
+  ['agentphone', 'gemini_live'],
+  ['agentphone', 'claude'],
+  ['gemini_live', 'claude'],
+  ['claude', 'gemini_verify'],
+  ['claude', 'bayes'],
+  ['gemini_verify', 'bayes'],
+  ['agentphone', 'moss'],
+  ['bayes', 'supabase'],
+  ['bayes', 'twilio'],
+  ['bayes', 'agentmail'],
+  ['bayes', 'aws'],
+  ['bayes', 'sponge'],
+  ['moss', 'bayes'],
+  ['supermemory', 'bayes'],
+  ['browseruse', 'bayes'],
+]
 
 function nodeCenter(n: PipelineNode) {
-  const x = COL_X[n.col]
-  const y = ROW_Y_BASE + n.row * ROW_H
-  return { cx: x + NODE_W / 2, cy: y + NODE_H / 2 }
+  return {
+    cx: COL_X[n.col] + NODE_W / 2,
+    cy: ROW_Y0 + n.row * ROW_H + NODE_H / 2,
+  }
 }
 
-// Edges: [from_id, to_id]
-const EDGES: [string, string][] = [
-  ['caller',       'agentphone'],
-  ['agentphone',   'gemini_live'],
-  ['agentphone',   'claude'],
-  ['gemini_live',  'claude'],
-  ['claude',       'gemini_verify'],
-  ['claude',       'bayes'],
-  ['gemini_verify','bayes'],
-  ['agentphone',   'moss'],
-  ['bayes',        'supabase'],
-  ['bayes',        'twilio'],
-  ['bayes',        'agentmail'],
-  ['bayes',        'aws'],
-  ['bayes',        'sponge'],
-  ['moss',         'bayes'],
-  ['supermemory',  'bayes'],
-  ['browseruse',   'bayes'],
-]
+function bezierD(ax: number, ay: number, bx: number, by: number) {
+  const mx = (ax + bx) / 2
+  return `M ${ax} ${ay} C ${mx} ${ay}, ${mx} ${by}, ${bx} ${by}`
+}
+
+function cubicAt(ax: number, ay: number, mx: number, bx: number, bxe: number, by: number, t: number) {
+  // cubic bezier: P0=ax,ay  P1=mx,ay  P2=mx,by  P3=bx,by
+  const mt = 1 - t
+  return {
+    x: mt*mt*mt*ax + 3*mt*mt*t*mx + 3*mt*t*t*mx + t*t*t*bxe,
+    y: mt*mt*mt*ay + 3*mt*mt*t*ay + 3*mt*t*t*by  + t*t*t*by,
+  }
+}
 
 // ── Component ─────────────────────────────────────────────────────────────────
 
 export default function PipelineView() {
   const [selected, setSelected] = useState<PipelineNode | null>(null)
   const [tick, setTick] = useState(0)
-  const svgRef = useRef<SVGSVGElement>(null)
 
-  // Animate particle tick
   useEffect(() => {
-    const id = setInterval(() => setTick(t => (t + 1) % 100), 40)
+    const id = setInterval(() => setTick(t => (t + 1) % 120), 35)
     return () => clearInterval(id)
   }, [])
 
   const nodeMap = Object.fromEntries(NODES.map(n => [n.id, n]))
 
-  const SVG_W = 980
-  const SVG_H = 500
-
   return (
-    <div className="relative w-full h-full flex flex-col" style={{ background: 'var(--background)', minHeight: '100%' }}>
+    <div className="relative w-full h-full flex flex-col select-none"
+      style={{ background: 'var(--background)' }}>
 
-      {/* ── Info panel top-left ──────────────────────────────────────────── */}
-      <div className="absolute top-3 left-3 z-20 w-52 rounded-xl p-3 text-[10px] leading-relaxed"
-        style={{ background: 'var(--surface)', border: '1px solid var(--border)', backdropFilter: 'blur(8px)' }}>
-        <div className="flex items-center gap-1.5 mb-2">
-          <span className="w-1.5 h-1.5 rounded-full bg-cyan-400 animate-pulse" />
-          <span className="font-bold uppercase tracking-widest text-[9px] text-[var(--muted)]">Data Pipeline</span>
+      {/* ── Info panel ────────────────────────────────────────────────── */}
+      <div className="absolute top-4 left-4 z-20 w-56 rounded-2xl p-4"
+        style={{
+          background: 'var(--surface)',
+          border: '1px solid var(--border)',
+          boxShadow: '0 4px 24px rgba(0,0,0,0.18)',
+        }}>
+        <div className="flex items-center gap-2 mb-3">
+          <span className="w-2 h-2 rounded-full bg-cyan-400 animate-pulse" />
+          <span className="text-[10px] font-bold uppercase tracking-[0.2em] text-[var(--muted)]">Data Pipeline</span>
         </div>
-        <p className="text-[var(--foreground-2)] mb-2">
-          Anonymous caller → AI multi-model triage → real-time principal alert in <span className="text-cyan-400 font-bold">&lt;8s</span>.
+        <p className="text-[11px] leading-relaxed text-[var(--foreground-2)] mb-3">
+          Anonymous caller → 3-model AI triage → principal SMS in{' '}
+          <span className="text-cyan-400 font-bold">&lt;8s</span>
         </p>
-        <div className="space-y-1">
+        <div className="space-y-2">
           {[
-            { label: 'Models',    value: '3 AI models', color: '#4285f4' },
+            { label: 'Models',    value: '3 AI models',          color: '#4285f4' },
             { label: 'Consensus', value: 'Claude + Gemini + Bayes', color: '#f97316' },
-            { label: 'Latency',   value: '< 8 seconds', color: '#10b981' },
-            { label: 'Languages', value: '70+ supported', color: '#06b6d4' },
+            { label: 'Latency',   value: '< 8 seconds',          color: '#10b981' },
+            { label: 'Languages', value: '70+ supported',         color: '#06b6d4' },
           ].map(r => (
-            <div key={r.label} className="flex items-center justify-between gap-1">
-              <span className="text-[var(--muted)]">{r.label}</span>
-              <span className="font-semibold" style={{ color: r.color }}>{r.value}</span>
+            <div key={r.label} className="flex items-center justify-between">
+              <span className="text-[10px] text-[var(--muted)]">{r.label}</span>
+              <span className="text-[10px] font-semibold" style={{ color: r.color }}>{r.value}</span>
             </div>
           ))}
         </div>
-        <div className="mt-2 pt-2" style={{ borderTop: '1px solid var(--border)' }}>
-          <span className="text-[var(--muted-2)] text-[9px]">Click any node to explore</span>
+        <div className="mt-3 pt-3 text-[9px] text-[var(--muted-2)]"
+          style={{ borderTop: '1px solid var(--border)' }}>
+          Click any node to explore
         </div>
       </div>
 
-      {/* ── Column labels ────────────────────────────────────────────────── */}
-      <div className="shrink-0 flex items-center pt-3 pb-0 px-4 ml-[215px]">
-        {COL_LABELS.map((label, i) => (
-          <div key={label}
-            className="text-[9px] font-bold uppercase tracking-widest text-center"
-            style={{
-              width: i < COL_LABELS.length - 1 ? `${COL_X[i+1] - COL_X[i]}px` : '140px',
-              color: COL_COLORS[i],
-              opacity: 0.7,
-            }}>
-            {label}
-          </div>
-        ))}
+      {/* ── Column headers ────────────────────────────────────────────── */}
+      <div className="shrink-0 pt-4 pb-1 px-0" style={{ marginLeft: 0 }}>
+        <svg width={SVG_W} height={28} viewBox={`0 0 ${SVG_W} 28`} className="block mx-auto" style={{ minWidth: SVG_W }}>
+          {COL_LABELS.map((label, i) => {
+            const x = COL_X[i] + NODE_W / 2
+            return (
+              <g key={label}>
+                <text x={x} y={18} textAnchor="middle" fontSize="10" fontWeight="800"
+                  letterSpacing="3" fill={COL_COLORS[i]} opacity="0.75"
+                  style={{ fontFamily: 'var(--font-roboto-slab), serif', textTransform: 'uppercase' }}>
+                  {label}
+                </text>
+              </g>
+            )
+          })}
+        </svg>
       </div>
 
-      {/* ── SVG canvas ───────────────────────────────────────────────────── */}
-      <div className="relative flex-1 overflow-x-auto overflow-y-hidden px-4 pb-4">
+      {/* ── SVG canvas ────────────────────────────────────────────────── */}
+      <div className="flex-1 overflow-x-auto overflow-y-auto px-0">
         <svg
-          ref={svgRef}
-          width={SVG_W}
-          height={SVG_H}
+          width={SVG_W} height={SVG_H}
           viewBox={`0 0 ${SVG_W} ${SVG_H}`}
           className="block mx-auto"
           style={{ minWidth: SVG_W }}
         >
           <defs>
-            {/* Glow filters */}
-            <filter id="glow-cyan" x="-50%" y="-50%" width="200%" height="200%">
-              <feGaussianBlur stdDeviation="3" result="coloredBlur"/>
-              <feMerge><feMergeNode in="coloredBlur"/><feMergeNode in="SourceGraphic"/></feMerge>
-            </filter>
-            <filter id="glow-blue" x="-50%" y="-50%" width="200%" height="200%">
-              <feGaussianBlur stdDeviation="4" result="coloredBlur"/>
-              <feMerge><feMergeNode in="coloredBlur"/><feMergeNode in="SourceGraphic"/></feMerge>
-            </filter>
-            {/* Animated gradient for edges */}
-            {EDGES.map(([from, to], i) => {
-              const a = nodeMap[from]
-              const b = nodeMap[to]
+            {/* Per-node radial gradients */}
+            {NODES.map(n => {
+              const { cx, cy } = nodeCenter(n)
+              const id = `ng-${n.id}`
+              return (
+                <radialGradient key={id} id={id} cx="30%" cy="30%" r="80%">
+                  <stop offset="0%" stopColor={n.color} stopOpacity="0.22" />
+                  <stop offset="100%" stopColor={n.color} stopOpacity="0.06" />
+                </radialGradient>
+              )
+            })}
+
+            {/* Edge gradients */}
+            {EDGES.map(([fromId, toId], i) => {
+              const a = nodeMap[fromId]; const b = nodeMap[toId]
               if (!a || !b) return null
               const { cx: ax, cy: ay } = nodeCenter(a)
               const { cx: bx, cy: by } = nodeCenter(b)
               return (
-                <linearGradient key={i} id={`eg-${i}`}
+                <linearGradient key={`eg-${i}`} id={`eg-${i}`}
                   x1={ax} y1={ay} x2={bx} y2={by} gradientUnits="userSpaceOnUse">
-                  <stop offset="0%" stopColor={a.color} stopOpacity="0.7"/>
-                  <stop offset="100%" stopColor={b.color} stopOpacity="0.7"/>
+                  <stop offset="0%" stopColor={a.color} stopOpacity="0.55" />
+                  <stop offset="100%" stopColor={b.color} stopOpacity="0.55" />
                 </linearGradient>
               )
             })}
+
+            {/* Glow filter */}
+            <filter id="node-glow" x="-30%" y="-30%" width="160%" height="160%">
+              <feGaussianBlur stdDeviation="5" result="blur" />
+              <feMerge><feMergeNode in="blur" /><feMergeNode in="SourceGraphic" /></feMerge>
+            </filter>
+            <filter id="edge-glow" x="-20%" y="-20%" width="140%" height="140%">
+              <feGaussianBlur stdDeviation="2.5" result="blur" />
+              <feMerge><feMergeNode in="blur" /><feMergeNode in="SourceGraphic" /></feMerge>
+            </filter>
+            <filter id="particle-glow" x="-100%" y="-100%" width="300%" height="300%">
+              <feGaussianBlur stdDeviation="3.5" result="blur" />
+              <feMerge><feMergeNode in="blur" /><feMergeNode in="SourceGraphic" /></feMerge>
+            </filter>
           </defs>
 
-          {/* ── Edges ─────────────────────────────────────────────────── */}
-          {EDGES.map(([from, to], i) => {
-            const a = nodeMap[from]
-            const b = nodeMap[to]
+          {/* ── Edges ──────────────────────────────────────────────── */}
+          {EDGES.map(([fromId, toId], i) => {
+            const a = nodeMap[fromId]; const b = nodeMap[toId]
             if (!a || !b) return null
             const { cx: ax, cy: ay } = nodeCenter(a)
             const { cx: bx, cy: by } = nodeCenter(b)
-            // Bezier control points
+            const d = bezierD(ax, ay, bx, by)
             const mx = (ax + bx) / 2
-            const d = `M ${ax} ${ay} C ${mx} ${ay}, ${mx} ${by}, ${bx} ${by}`
-
-            // Particle position along path (t = 0..1)
-            const phase = (i * 13 + tick * 1.5) % 100 / 100
-            const t = phase
-            // Cubic bezier at t
-            const pt = cubicBezierPoint(ax, ay, mx, ay, mx, by, bx, by, t)
-
+            const phase = ((i * 17 + tick * 1.8) % 120) / 120
+            const pt = cubicAt(ax, ay, mx, mx, bx, by, phase)
             return (
               <g key={i}>
-                {/* Base edge */}
-                <path d={d} fill="none" stroke={`url(#eg-${i})`} strokeWidth="1.5" strokeOpacity="0.25" />
-                {/* Animated particle */}
-                <circle
-                  cx={pt.x} cy={pt.y} r="2.5"
-                  fill={b.color}
-                  opacity="0.9"
-                  filter="url(#glow-cyan)"
-                />
+                {/* Glow layer */}
+                <path d={d} fill="none" stroke={`url(#eg-${i})`} strokeWidth="2.5"
+                  strokeOpacity="0.18" filter="url(#edge-glow)" />
+                {/* Crisp line */}
+                <path d={d} fill="none" stroke={`url(#eg-${i})`} strokeWidth="1.5"
+                  strokeOpacity="0.45" />
+                {/* Particle */}
+                <circle cx={pt.x} cy={pt.y} r="4" fill={b.color} opacity="0.95"
+                  filter="url(#particle-glow)" />
+                <circle cx={pt.x} cy={pt.y} r="2" fill="white" opacity="0.7" />
               </g>
             )
           })}
 
-          {/* ── Nodes ─────────────────────────────────────────────────── */}
+          {/* ── Nodes ──────────────────────────────────────────────── */}
           {NODES.map(node => {
-            const { cx, cy } = nodeCenter(node)
-            const x = cx - NODE_W / 2
-            const y = cy - NODE_H / 2
+            const x = COL_X[node.col]
+            const y = ROW_Y0 + node.row * ROW_H
             const isSelected = selected?.id === node.id
+
             return (
-              <g key={node.id} style={{ cursor: 'pointer' }} onClick={() => setSelected(isSelected ? null : node)}>
-                {/* Outer glow ring when selected */}
+              <g key={node.id} style={{ cursor: 'pointer' }}
+                onClick={() => setSelected(isSelected ? null : node)}>
+
+                {/* Outer selection glow */}
                 {isSelected && (
-                  <rect x={x - 4} y={y - 4} width={NODE_W + 8} height={NODE_H + 8}
-                    rx="14" fill="none" stroke={node.color} strokeWidth="2" strokeOpacity="0.6"
-                    filter="url(#glow-blue)"
-                  />
+                  <rect x={x - 6} y={y - 6} width={NODE_W + 12} height={NODE_H + 12}
+                    rx="18" fill="none" stroke={node.color} strokeWidth="2"
+                    strokeOpacity="0.5" filter="url(#node-glow)" />
                 )}
-                {/* Card background */}
+
+                {/* Card shadow */}
+                <rect x={x + 2} y={y + 4} width={NODE_W} height={NODE_H}
+                  rx="14" fill="rgba(0,0,0,0.35)" />
+
+                {/* Card base */}
                 <rect x={x} y={y} width={NODE_W} height={NODE_H}
-                  rx="10"
-                  fill="var(--surface)"
-                  stroke={isSelected ? node.color : 'var(--border)'}
-                  strokeWidth={isSelected ? "1.5" : "1"}
-                  strokeOpacity={isSelected ? "0.8" : "0.4"}
-                />
-                {/* Color top bar */}
-                <rect x={x} y={y} width={NODE_W} height={4} rx="10"
-                  fill={node.color} opacity="0.7"
-                />
-                <rect x={x} y={y + 2} width={NODE_W} height={2} fill={node.color} opacity="0.7" />
+                  rx="14"
+                  fill={`url(#ng-${node.id})`} />
+                <rect x={x} y={y} width={NODE_W} height={NODE_H}
+                  rx="14" fill="none"
+                  stroke={isSelected ? node.color : node.color}
+                  strokeWidth={isSelected ? '2' : '1'}
+                  strokeOpacity={isSelected ? '0.85' : '0.3'} />
+
+                {/* Top accent bar */}
+                <rect x={x} y={y} width={NODE_W} height={5} rx="14"
+                  fill={node.color} opacity="0.8" />
+                <rect x={x} y={y + 3} width={NODE_W} height={2}
+                  fill={node.color} opacity="0.5" />
+
+                {/* Icon circle background */}
+                <circle cx={x + 30} cy={y + NODE_H / 2} r="18"
+                  fill={node.color} opacity="0.15" />
+                <circle cx={x + 30} cy={y + NODE_H / 2} r="17"
+                  fill="none" stroke={node.color} strokeWidth="1" strokeOpacity="0.3" />
 
                 {/* Icon */}
-                <text x={x + 12} y={y + 26} fontSize="16" dominantBaseline="middle" textAnchor="start">{node.icon}</text>
+                <text x={x + 30} y={y + NODE_H / 2 + 1}
+                  fontSize="18" dominantBaseline="middle" textAnchor="middle">
+                  {node.icon}
+                </text>
 
                 {/* Label */}
-                <text x={x + 34} y={y + 22} fontSize="9.5" fontWeight="700" fill="var(--foreground)" dominantBaseline="middle">
+                <text x={x + 56} y={y + 28} fontSize="11.5" fontWeight="700"
+                  fill="var(--foreground)" dominantBaseline="middle"
+                  style={{ fontFamily: 'var(--font-roboto-slab), serif' }}>
                   {node.label}
                 </text>
+
                 {/* Sublabel */}
-                <text x={x + 34} y={y + 35} fontSize="7.5" fill="var(--muted)" dominantBaseline="middle">
+                <text x={x + 56} y={y + 44} fontSize="9" fill="var(--muted)"
+                  dominantBaseline="middle"
+                  style={{ fontFamily: 'var(--font-roboto-slab), serif' }}>
                   {node.sublabel}
                 </text>
 
-                {/* Latency badge */}
+                {/* Bottom badges row */}
                 {node.latency && (
                   <g>
-                    <rect x={x + 6} y={y + NODE_H - 18} width={42} height={12} rx="4"
-                      fill={node.color} opacity="0.15" />
-                    <text x={x + 27} y={y + NODE_H - 12} fontSize="7" fontWeight="600" fill={node.color}
-                      dominantBaseline="middle" textAnchor="middle">
-                      {node.latency}
+                    <rect x={x + 56} y={y + NODE_H - 22} width={46} height={15}
+                      rx="5" fill={node.color} opacity="0.18" />
+                    <rect x={x + 56} y={y + NODE_H - 22} width={46} height={15}
+                      rx="5" fill="none" stroke={node.color} strokeWidth="0.8" strokeOpacity="0.35" />
+                    <text x={x + 79} y={y + NODE_H - 14}
+                      fontSize="8.5" fontWeight="700" fill={node.color}
+                      dominantBaseline="middle" textAnchor="middle"
+                      style={{ fontFamily: 'var(--font-roboto-slab), serif' }}>
+                      ⏱ {node.latency}
                     </text>
                   </g>
                 )}
 
-                {/* Sponsor badge */}
                 {node.sponsor && (
                   <g>
-                    <rect x={x + NODE_W - 52} y={y + NODE_H - 18} width={46} height={12} rx="4"
-                      fill={node.color} opacity="0.12" />
-                    <text x={x + NODE_W - 29} y={y + NODE_H - 12} fontSize="6.5" fontWeight="600" fill={node.color}
-                      dominantBaseline="middle" textAnchor="middle" opacity="0.9">
-                      {node.sponsor.length > 10 ? node.sponsor.slice(0,10) + '…' : node.sponsor}
+                    <rect x={x + 108} y={y + NODE_H - 22} width={NODE_W - 114} height={15}
+                      rx="5" fill={node.color} opacity="0.12" />
+                    <rect x={x + 108} y={y + NODE_H - 22} width={NODE_W - 114} height={15}
+                      rx="5" fill="none" stroke={node.color} strokeWidth="0.8" strokeOpacity="0.25" />
+                    <text x={x + 108 + (NODE_W - 114) / 2} y={y + NODE_H - 14}
+                      fontSize="7.5" fontWeight="600" fill={node.color} opacity="0.9"
+                      dominantBaseline="middle" textAnchor="middle"
+                      style={{ fontFamily: 'var(--font-roboto-slab), serif' }}>
+                      {node.sponsor.length > 10 ? node.sponsor.slice(0, 10) + '…' : node.sponsor}
                     </text>
                   </g>
                 )}
@@ -435,20 +395,20 @@ export default function PipelineView() {
             )
           })}
         </svg>
-
-        {/* ── Detail card (floating) ────────────────────────────────────── */}
-        {selected && (
-          <DetailCard node={selected} onClose={() => setSelected(null)} />
-        )}
       </div>
 
-      {/* ── Legend ───────────────────────────────────────────────────────── */}
-      <div className="shrink-0 flex items-center gap-4 px-6 pb-3 pt-1 flex-wrap"
+      {/* ── Detail card ───────────────────────────────────────────────── */}
+      {selected && (
+        <DetailCard node={selected} onClose={() => setSelected(null)} />
+      )}
+
+      {/* ── Legend ────────────────────────────────────────────────────── */}
+      <div className="shrink-0 flex items-center gap-5 px-6 py-2.5 flex-wrap"
         style={{ borderTop: '1px solid var(--border)' }}>
-        <span className="text-[9px] uppercase tracking-widest text-[var(--muted)] font-bold">Layers:</span>
+        <span className="text-[9px] uppercase tracking-[0.2em] text-[var(--muted)] font-bold">Layers:</span>
         {COL_LABELS.map((l, i) => (
-          <span key={l} className="flex items-center gap-1 text-[9px] font-semibold">
-            <span className="w-2 h-2 rounded-full" style={{ background: COL_COLORS[i] }} />
+          <span key={l} className="flex items-center gap-1.5 text-[10px] font-semibold">
+            <span className="w-2.5 h-2.5 rounded-full" style={{ background: COL_COLORS[i] }} />
             <span style={{ color: COL_COLORS[i] }}>{l}</span>
           </span>
         ))}
@@ -465,70 +425,57 @@ export default function PipelineView() {
 function DetailCard({ node, onClose }: { node: PipelineNode; onClose: () => void }) {
   return (
     <div
-      className="absolute bottom-12 right-4 w-80 rounded-2xl p-4 z-30 shadow-2xl"
+      className="absolute bottom-14 right-5 z-30 w-88 rounded-2xl overflow-hidden"
       style={{
+        width: 340,
         background: 'var(--surface)',
-        border: `1px solid ${node.color}40`,
-        boxShadow: `0 0 24px ${node.color}20`,
-      }}
-    >
-      <div className="flex items-start justify-between mb-3">
-        <div className="flex items-center gap-2">
-          <span className="text-2xl">{node.icon}</span>
+        border: `1px solid ${node.color}50`,
+        boxShadow: `0 0 0 1px ${node.color}20, 0 16px 48px rgba(0,0,0,0.35), 0 0 40px ${node.color}15`,
+      }}>
+      {/* Header bar */}
+      <div className="px-5 py-4 flex items-start justify-between gap-3"
+        style={{ background: `${node.color}12`, borderBottom: `1px solid ${node.color}25` }}>
+        <div className="flex items-center gap-3">
+          <div className="w-11 h-11 rounded-xl flex items-center justify-center text-2xl shrink-0"
+            style={{ background: `${node.color}20`, border: `1px solid ${node.color}35` }}>
+            {node.icon}
+          </div>
           <div>
-            <div className="font-bold text-[var(--foreground)] text-sm">{node.label}</div>
-            <div className="text-[10px] text-[var(--muted)]">{node.sublabel}</div>
+            <div className="font-bold text-[var(--foreground)] text-sm leading-tight">{node.label}</div>
+            <div className="text-[10px] text-[var(--muted)] mt-0.5">{node.sublabel}</div>
           </div>
         </div>
-        <button onClick={onClose} className="text-[var(--muted)] hover:text-[var(--foreground)] text-lg leading-none mt-0.5">×</button>
+        <button onClick={onClose}
+          className="text-[var(--muted)] hover:text-[var(--foreground)] text-xl leading-none mt-0.5 shrink-0 transition-colors">×</button>
       </div>
 
-      {/* Color bar */}
-      <div className="h-px mb-3" style={{ background: `linear-gradient(90deg, ${node.color}, transparent)` }} />
-
-      <p className="text-[11px] leading-relaxed text-[var(--foreground-2)] mb-3">{node.detail}</p>
-
-      <div className="flex flex-wrap gap-2">
-        {node.latency && (
-          <span className="text-[10px] px-2 py-0.5 rounded-full font-semibold" style={{ background: `${node.color}18`, color: node.color, border: `1px solid ${node.color}30` }}>
-            ⏱ {node.latency}
+      {/* Body */}
+      <div className="px-5 py-4">
+        <p className="text-[12px] leading-relaxed text-[var(--foreground-2)] mb-4">{node.detail}</p>
+        <div className="flex flex-wrap gap-2">
+          {node.latency && (
+            <span className="flex items-center gap-1 text-[10px] px-2.5 py-1 rounded-full font-semibold"
+              style={{ background: `${node.color}15`, color: node.color, border: `1px solid ${node.color}30` }}>
+              ⏱ {node.latency}
+            </span>
+          )}
+          {node.sponsor && (
+            <span className="flex items-center gap-1 text-[10px] px-2.5 py-1 rounded-full font-semibold"
+              style={{ background: `${node.color}15`, color: node.color, border: `1px solid ${node.color}30` }}>
+              🏷 {node.sponsor}
+            </span>
+          )}
+          {node.prize && (
+            <span className="flex items-center gap-1 text-[10px] px-2.5 py-1 rounded-full font-semibold bg-yellow-500/10 text-yellow-400 border border-yellow-500/25">
+              🏆 {node.prize}
+            </span>
+          )}
+          <span className="text-[9px] px-2.5 py-1 rounded-full uppercase tracking-wider font-semibold"
+            style={{ background: 'var(--surface-2)', color: 'var(--muted)', border: '1px solid var(--border)' }}>
+            {node.layer}
           </span>
-        )}
-        {node.sponsor && (
-          <span className="text-[10px] px-2 py-0.5 rounded-full font-semibold" style={{ background: `${node.color}18`, color: node.color, border: `1px solid ${node.color}30` }}>
-            🏷 {node.sponsor}
-          </span>
-        )}
-        {node.prize && (
-          <span className="text-[10px] px-2 py-0.5 rounded-full font-semibold bg-yellow-500/10 text-yellow-400 border border-yellow-500/20">
-            🏆 {node.prize}
-          </span>
-        )}
-        <span className="text-[10px] px-2 py-0.5 rounded-full font-semibold uppercase tracking-wider"
-          style={{ background: 'var(--surface-2)', color: 'var(--muted)', border: '1px solid var(--border)' }}>
-          {node.layer}
-        </span>
+        </div>
       </div>
     </div>
   )
-}
-
-// ── Math helpers ──────────────────────────────────────────────────────────────
-
-function cubicBezierPoint(
-  x0: number, y0: number,
-  x1: number, y1: number,
-  x2: number, y2: number,
-  x3: number, y3: number,
-  t: number,
-) {
-  const mt = 1 - t
-  const mt2 = mt * mt
-  const mt3 = mt2 * mt
-  const t2 = t * t
-  const t3 = t2 * t
-  return {
-    x: mt3 * x0 + 3 * mt2 * t * x1 + 3 * mt * t2 * x2 + t3 * x3,
-    y: mt3 * y0 + 3 * mt2 * t * y1 + 3 * mt * t2 * y2 + t3 * y3,
-  }
 }
