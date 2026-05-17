@@ -15,6 +15,8 @@ function timeCalled(iso: string) {
 export default function AttendancePage() {
   const [logs, setLogs] = useState<AttendanceLog[]>([])
   const [loading, setLoading] = useState(true)
+  const [notifying, setNotifying] = useState(false)
+  const [notifyStatus, setNotifyStatus] = useState('')
 
   useEffect(() => {
     fetch('/api/attendance')
@@ -41,6 +43,21 @@ export default function AttendancePage() {
 
   const schoolCount = Object.keys(grouped).length
 
+  const notifyTeachers = async () => {
+    setNotifying(true)
+    setNotifyStatus('')
+    try {
+      const r = await fetch('/api/attendance', { method: 'POST' })
+      const data = await r.json()
+      if (!r.ok) throw new Error(data.error || 'Notification failed')
+      setNotifyStatus(`Sent ${data.count} school summaries`)
+    } catch (e) {
+      setNotifyStatus(e instanceof Error ? e.message : 'Notification failed')
+    } finally {
+      setNotifying(false)
+    }
+  }
+
   return (
     <main className="min-h-screen bg-zinc-50 text-zinc-950">
       <header className="border-b border-zinc-200 bg-white">
@@ -57,9 +74,28 @@ export default function AttendancePage() {
 
       <div className="mx-auto max-w-6xl px-6 py-6">
         <section className="mb-6 rounded-lg border border-zinc-200 bg-white p-5 shadow-sm">
-          <div className="text-sm font-medium text-zinc-500">Today</div>
-          <div className="mt-1 text-3xl font-bold tracking-tight">
-            {logs.length} students absent today across {schoolCount} {schoolCount === 1 ? 'school' : 'schools'}
+          <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+            <div>
+              <div className="text-sm font-medium text-zinc-500">Today</div>
+              <div className="mt-1 text-3xl font-bold tracking-tight">
+                {logs.length} students absent today across {schoolCount} {schoolCount === 1 ? 'school' : 'schools'}
+              </div>
+              <div className="mt-3 flex flex-wrap gap-2">
+                {Object.entries(grouped).map(([school, schoolLogs]) => (
+                  <span key={school} className="rounded-full border border-zinc-200 bg-zinc-50 px-3 py-1 text-xs font-medium text-zinc-700">
+                    {school}: {schoolLogs.length}
+                  </span>
+                ))}
+              </div>
+              {notifyStatus && <div className="mt-3 text-xs font-medium text-zinc-500">{notifyStatus}</div>}
+            </div>
+            <button
+              onClick={notifyTeachers}
+              disabled={notifying || logs.length === 0}
+              className="rounded-md bg-zinc-950 px-4 py-2 text-xs font-semibold uppercase tracking-wide text-white transition-colors hover:bg-zinc-800 disabled:cursor-not-allowed disabled:bg-zinc-300"
+            >
+              {notifying ? 'Notifying...' : 'Notify all homeroom teachers'}
+            </button>
           </div>
         </section>
 
