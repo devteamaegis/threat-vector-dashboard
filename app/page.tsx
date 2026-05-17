@@ -1105,8 +1105,8 @@ export default function Dashboard() {
             <div className="flex items-center gap-2.5">
               <div className="w-6 h-6 rounded-md bg-red-600 flex items-center justify-center text-white text-[9px] font-black">TV</div>
               <div>
-                <div className="text-[11px] font-bold text-zinc-900 tracking-[0.1em] leading-none">THREAT VECTOR</div>
-                <div className="text-[8px] text-zinc-400 leading-none mt-0.5 tracking-widest">AI COMMAND CENTER</div>
+                <div className="text-[11px] font-bold text-[var(--foreground)] tracking-[0.1em] leading-none">THREAT VECTOR</div>
+                <div className="text-[8px] text-[var(--muted)] leading-none mt-0.5 tracking-widest">AI COMMAND CENTER</div>
               </div>
             </div>
 
@@ -1137,8 +1137,8 @@ export default function Dashboard() {
             <button onClick={runDemo} disabled={demoRunning}
               className={`flex items-center gap-1.5 text-[10px] font-semibold uppercase px-3 py-1.5 rounded-md border transition-all tracking-widest ${
                 demoRunning
-                  ? 'border-zinc-800 text-zinc-400 cursor-not-allowed'
-                  : 'border-cyan-500/60 text-cyan-600 bg-cyan-50 hover:bg-cyan-100 hover:border-cyan-600'
+                  ? 'border-[var(--border)] text-[var(--muted)] cursor-not-allowed'
+                  : 'border-cyan-500/60 text-cyan-400 bg-cyan-950/20 hover:bg-cyan-950/40 hover:border-cyan-500'
               }`}>
               {demoRunning ? <><span className="w-1.5 h-1.5 rounded-full bg-cyan-600 animate-pulse" />Processing…</> : <><span>📞</span>Demo Call</>}
             </button>
@@ -1153,7 +1153,7 @@ export default function Dashboard() {
                 {newCount} NEW
               </span>
             )}
-              <span className="text-[10px] text-zinc-400 font-mono hidden xl:block">{dateStr}</span>
+              <span className="text-[10px] text-[var(--muted)] font-mono hidden xl:block">{dateStr}</span>
             </div>
           </header>
 
@@ -1178,7 +1178,7 @@ export default function Dashboard() {
               style={{ borderRight: '1px solid var(--border)' }}>
               <div className="flex flex-col gap-5">
                 <div className="flex items-center justify-between">
-                  <div className="text-[9px] font-semibold uppercase tracking-[0.2em] text-zinc-400">Overview</div>
+                  <div className="text-[9px] font-semibold uppercase tracking-[0.2em] text-[var(--muted)]">Overview</div>
                   <button onClick={() => setShowPricing(true)}
                     className="px-2 py-1 rounded-md text-[9px] font-semibold uppercase tracking-wide text-cyan-400 border border-cyan-900/60 hover:border-cyan-700/70 hover:bg-cyan-950/20 transition-colors">
                     Pricing
@@ -1257,7 +1257,7 @@ export default function Dashboard() {
               {demoRunning && pipelineStep >= 0 && (
                 <div className="w-full max-w-2xl rounded-lg px-4 py-3"
                   style={{ background: 'var(--surface)', border: '1px solid var(--border)', boxShadow: '0 2px 8px rgba(0,0,0,0.04)' }}>
-                  <div className="text-[8px] font-bold uppercase tracking-[0.25em] text-zinc-400 mb-3">Processing Pipeline</div>
+                  <div className="text-[8px] font-bold uppercase tracking-[0.25em] text-[var(--muted)] mb-3">Processing Pipeline</div>
                   <PipelineVisualizer
                     activeStep={pipelineStep < PIPELINE_STEPS.length ? pipelineStep : PIPELINE_STEPS.length}
                     stepTimes={stepTimes}
@@ -1272,8 +1272,8 @@ export default function Dashboard() {
               style={{ borderColor: 'var(--border)', background: 'var(--surface-2)' }}>
               <div className="px-4 pt-4 pb-3 shrink-0 border-b" style={{ borderColor: 'var(--border)' }}>
                 <div className="flex items-center justify-between mb-3">
-                  <span className="text-[9px] font-bold uppercase tracking-[0.2em] text-zinc-400">Live Feed</span>
-                  <span className="text-[10px] text-zinc-400 font-mono tabular-nums">{filtered.length}</span>
+                  <span className="text-[9px] font-bold uppercase tracking-[0.2em] text-[var(--muted)]">Live Feed</span>
+                  <span className="text-[10px] text-[var(--muted)] font-mono tabular-nums">{filtered.length}</span>
                 </div>
                 <div className="flex flex-wrap gap-1">
                   {[
@@ -1284,7 +1284,7 @@ export default function Dashboard() {
                   ].map(f => (
                     <button key={f.k} onClick={() => setFilter(f.k)}
                       className={`px-3 py-1 rounded-full text-[10px] font-semibold uppercase tracking-wide transition-colors ${
-                        filter === f.k ? 'bg-zinc-900 text-white' : 'text-zinc-400 hover:text-zinc-700'
+                        filter === f.k ? 'bg-[var(--foreground)] text-[var(--background)]' : 'text-[var(--muted)] hover:text-[var(--foreground)]'
                       }`}>
                       {f.dot && <span className={f.dot}>• </span>}{f.l}
                     </button>
