@@ -413,7 +413,7 @@ export default function PipelineView() {
           </span>
         ))}
         <span className="ml-auto text-[9px] text-[var(--muted-2)]">
-          {NODES.filter(n => n.sponsor).length} sponsors · {NODES.filter(n => n.prize).length} prize tracks
+          {NODES.filter(n => n.sponsor).length} integrations
         </span>
       </div>
     </div>
@@ -463,11 +463,6 @@ function DetailCard({ node, onClose }: { node: PipelineNode; onClose: () => void
             <span className="flex items-center gap-1 text-[10px] px-2.5 py-1 rounded-full font-semibold"
               style={{ background: `${node.color}15`, color: node.color, border: `1px solid ${node.color}30` }}>
               🏷 {node.sponsor}
-            </span>
-          )}
-          {node.prize && (
-            <span className="flex items-center gap-1 text-[10px] px-2.5 py-1 rounded-full font-semibold bg-yellow-500/10 text-yellow-400 border border-yellow-500/25">
-              🏆 {node.prize}
             </span>
           )}
           <span className="text-[9px] px-2.5 py-1 rounded-full uppercase tracking-wider font-semibold"
