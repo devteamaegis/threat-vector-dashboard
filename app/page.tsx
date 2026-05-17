@@ -897,7 +897,8 @@ export default function Dashboard() {
   useEffect(() => {
     if (loading) { setOrbMode('thinking'); return }
     if (demoRunning) return
-    setOrbMode(tips.some(t => t.urgency === 'critical' && t.status === 'new') ? 'critical' : 'idle')
+    // Orb only goes red during an active incoming call — not from existing tips in DB
+    setOrbMode('idle')
   }, [loading, demoRunning, tips])
 
   const clearTimers = () => { demoRef.current.forEach(clearTimeout); demoRef.current = [] }

@@ -157,9 +157,9 @@ export default function ClaudiaOrb({ mode, size = 200 }: Props) {
 
         const pos = ptGeo.attributes.position.array as Float32Array
         const isCrit = m === 'critical'
-        const speedMult = isCrit ? 1.8 : m==='speaking'?1.2 : m==='thinking'?0.7 : m==='listening'?0.6 : m==='attendance'?0.3 : 0.18
+        const speedMult = isCrit ? 1.8 : m==='speaking'?1.2 : m==='thinking'?0.7 : m==='listening'?0.6 : m==='attendance'?0.3 : 0.06
         const radiusMult = isCrit ? 1.25 : m==='speaking'?1.12 : m==='listening'?0.95 : m==='attendance'?1.05 : 1.0
-        const breathAmp  = isCrit ? 0.18 : m==='speaking'?0.12 : m==='listening'?0.07 : m==='attendance'?0.04 : 0.025
+        const breathAmp  = isCrit ? 0.18 : m==='speaking'?0.12 : m==='listening'?0.07 : m==='attendance'?0.04 : 0.01
 
         for (let i = 0; i < PARTICLE_COUNT; i++) {
           const ph = phases[i]
@@ -172,8 +172,8 @@ export default function ClaudiaOrb({ mode, size = 200 }: Props) {
           pos[i*3+2] = (bx*sinV + bz*cosV) * breath * radiusMult
         }
         ptGeo.attributes.position.needsUpdate = true
-        particles.rotation.y += isCrit ? 0.004 : m==='speaking'?0.002 : m==='thinking'?0.001 : 0.0004
-        particles.rotation.x += isCrit ? 0.0015 : 0.0002
+        particles.rotation.y += isCrit ? 0.004 : m==='speaking'?0.002 : m==='thinking'?0.001 : 0.00008
+        particles.rotation.x += isCrit ? 0.0015 : m==='idle' ? 0.00003 : 0.0002
 
         const lineDist = m==='thinking'?0.55 : 0.45
         const lp = lineGeo.attributes.position.array as Float32Array
