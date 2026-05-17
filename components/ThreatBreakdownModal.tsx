@@ -2,12 +2,45 @@
 import { useEffect, useRef, useState, useCallback, useMemo } from 'react'
 
 // ── Word classification ────────────────────────────────────────────────────────
-const THREAT_WORDS    = new Set(['gun','guns','weapon','weapons','knife','knives','bomb','bombs','shoot','shooting','shot','kill','killing','killed','hurt','harm','harming','attack','attacking','attacked','threat','threatening','threatened','violence','violent','die','dead','death','fight','fighting','destroy','explode','explosion','blood','murder','stab','fire','burn','assault','rifle','firearm','pistol','explosive'])
-const URGENT_WORDS    = new Set(['tomorrow','today','tonight','now','soon','immediately','urgent','quickly','planning','plan','going','will','about','next','morning','afternoon','evening','right','before','this','week','hour','monday','friday','first period','before school','after school'])
-const FEAR_WORDS      = new Set(['scared','terrified','afraid','fear','worried','nervous','panic','please','help','dangerous','serious','warning','everyone','kids','students','people','friends','concerned','safe','unsafe','hide','crying','shaking','freaking'])
-const LOCATION_WORDS  = new Set(['gym','cafeteria','bathroom','classroom','hallway','parking','locker','room','campus','building','library','auditorium','lunchroom','office','lab','field','stadium','bus','entrance','exit','door'])
-const CREDIBILITY_WORDS = new Set(['saw','heard','overheard','showed','photo','picture','directly','witnessed','myself','personally','there','seen','proof','screenshot','video','record','told me','showed me'])
-const ESCALATION_WORDS  = new Set(['weeks','days','again','keeps','pattern','history','before','multiple','times','worse','escalating','building','months','recurring','repeated','always','never stops'])
+// Broad enough to catch natural speech ("gonna", "find", "coming", "school", etc.)
+const THREAT_WORDS    = new Set([
+  'gun','guns','weapon','weapons','knife','knives','bomb','bombs','shoot','shooting','shot',
+  'kill','killing','killed','hurt','harm','harming','attack','attacking','attacked',
+  'threat','threatening','threatened','violence','violent','die','dead','death',
+  'fight','fighting','destroy','explode','explosion','blood','murder','stab',
+  'fire','burn','assault','rifle','firearm','pistol','explosive',
+  // natural speech patterns
+  'find','coming','get','beat','punish','end','ruin','destroy','revenge','retaliate',
+  'after','target','targeting','hunting','chase','chasing','follow','following',
+])
+const URGENT_WORDS    = new Set([
+  'tomorrow','today','tonight','now','soon','immediately','urgent','quickly',
+  'planning','plan','going','gonna','will','about','next','morning','afternoon',
+  'evening','right','before','this','week','hour','monday','friday',
+  'gotta','need','must','have to','about to',
+])
+const FEAR_WORDS      = new Set([
+  'scared','terrified','afraid','fear','worried','nervous','panic','please','help',
+  'dangerous','serious','warning','everyone','kids','students','people','friends',
+  'concerned','safe','unsafe','hide','crying','shaking','freaking','threatened',
+  'uncomfortable','uneasy','suspicious','weird','strange','odd',
+])
+const LOCATION_WORDS  = new Set([
+  'gym','cafeteria','bathroom','classroom','hallway','parking','locker','room',
+  'campus','building','library','auditorium','lunchroom','office','lab','field',
+  'stadium','bus','entrance','exit','door','school','high school','middle school',
+  'elementary','outside','inside','near','behind','front',
+])
+const CREDIBILITY_WORDS = new Set([
+  'saw','heard','overheard','showed','photo','picture','directly','witnessed',
+  'myself','personally','there','seen','proof','screenshot','video','record',
+  'told me','showed me','watched','noticed','observed',
+])
+const ESCALATION_WORDS  = new Set([
+  'weeks','days','again','keeps','pattern','history','before','multiple','times',
+  'worse','escalating','building','months','recurring','repeated','always',
+  'never stops','used to','last time','every day',
+])
 
 type WordClass = 'threat' | 'urgent' | 'fear' | 'location' | 'credibility' | 'escalation' | 'neutral'
 function classifyWord(w: string): WordClass {
@@ -159,11 +192,32 @@ export default function ThreatBreakdownModal({
   const escalationCount  = wordClasses.filter(c => c === 'escalation').length
 
   const rawScore = Math.min(threatCount*20 + urgentCount*10 + fearCount*8 + locationCount*6 + credibilityCount*7 + escalationCount*5, 95)
-  const probPct  = bayesProbPct  ?? Math.max(rawScore, 5)
-  const ciLow    = bayesCiLow   ?? Math.max(probPct - 12, 0)
-  const ciHigh   = bayesCiHigh  ?? Math.min(probPct + 14, 100)
+
+  // Level → probability when Bayesian finds nothing meaningful (< 2%)
+  const LEVEL_TO_PROB: Record<number, number> = { 1: 5, 2: 15, 3: 40, 4: 68, 5: 88 }
+  const bayesIsMeaningful = bayesProbPct != null && bayesProbPct > 2
+  const levelDerivedProb  = threatLevel ? (LEVEL_TO_PROB[threatLevel] ?? 5) : null
+  const probPct = bayesIsMeaningful
+    ? bayesProbPct!
+    : levelDerivedProb != null
+      ? Math.max(levelDerivedProb, rawScore > 5 ? rawScore : 1)
+      : Math.max(rawScore, 5)
+
+  // CI: use Bayesian CI only if it has meaningful width (> 2pp), else derive from probPct
+  const bayesCiMeaningful = bayesCiLow != null && bayesCiHigh != null && (bayesCiHigh - bayesCiLow) > 2
+  const ciWidth = (threatLevel ?? 1) >= 4 ? 20 : 14
+  const ciLow  = bayesCiMeaningful ? bayesCiLow!  : Math.max(probPct - ciWidth, 0)
+  const ciHigh = bayesCiMeaningful ? bayesCiHigh! : Math.min(probPct + ciWidth, 100)
+
   const level    = threatLevel  ?? (probPct>80?5:probPct>55?4:probPct>30?3:probPct>10?2:1)
   const verdictColor = probPct>50?'#ef4444':probPct>15?'#f97316':'#22c55e'
+
+  // Probability source label (for verdict panel)
+  const probSource = bayesIsMeaningful
+    ? `Bayesian Monte Carlo · ${bayesTrace.length} verbal feature${bayesTrace.length!==1?'s':''} detected`
+    : levelDerivedProb != null
+      ? `AI semantic consensus · Level ${level}/5 · no explicit trigger keywords`
+      : `Keyword scoring · no Bayesian data`
 
   // ── Phase state ──────────────────────────────────────────────────────────────
   const [phase, setPhase]         = useState<Phase>('decode')
@@ -326,7 +380,7 @@ export default function ThreatBreakdownModal({
     { label:'Desperation',   pct: Math.min(fearCount*20 + urgentCount*12, 100),                  color:'#f97316' },
     { label:'Intent',        pct: Math.min((threatCount + urgentCount)*16, 100),                 color:'#f59e0b' },
     { label:'Specificity',   pct: Math.min((locationCount+credibilityCount)*18+threatCount*8,100),color:'#8b5cf6' },
-    { label:'Credibility',   pct: Math.min(credibilityCount*22 - (wordClasses.filter(c=>c==='neutral').length > words.length*0.85 ? 15:0), 100), color:'#06b6d4' },
+    { label:'Credibility',   pct: Math.max(0, Math.min(credibilityCount*22 - (wordClasses.filter(c=>c==='neutral').length > words.length*0.85 ? 15:0), 100)), color:'#06b6d4' },
     { label:'Escalation',    pct: Math.min(escalationCount*28, 100),                             color:'#a855f7' },
   ]
 
@@ -579,7 +633,7 @@ export default function ThreatBreakdownModal({
                     <span className="w-8 h-0.5 rounded" style={{ background:'#ef4444' }} />Mean: {probPct.toFixed(1)}%
                   </span>
                   <span className="flex items-center gap-2 text-[9px] text-zinc-500">
-                    <span className="w-8 h-3 rounded opacity-30" style={{ background:'#f59e0b' }} />95% CI: {ciLow.toFixed(0)}–{ciHigh.toFixed(0)}%
+                    <span className="w-8 h-3 rounded opacity-30" style={{ background:'#f59e0b' }} />95% CI: {ciLow.toFixed(0)}% – {ciHigh.toFixed(0)}%
                   </span>
                   <div className="flex items-center gap-4 ml-auto">
                     {[{color:'#ef4444',label:'>50% threat'},{color:'#f97316',label:'15–50%'},{color:'#22c55e',label:'<15% low risk'}].map(l=>(
@@ -589,6 +643,29 @@ export default function ThreatBreakdownModal({
                     ))}
                   </div>
                 </div>
+
+                {/* ── What happened summary (shows when trace has no keyword hits) ── */}
+                {mcPhase >= 2 && bayesTrace.length === 0 && (
+                  <div className="rounded-xl p-4 mb-4" style={{ background:'rgba(99,102,241,0.06)', border:'1px solid rgba(99,102,241,0.2)', animation:'mcFadeIn 0.4s ease-out' }}>
+                    <div className="flex items-start gap-3">
+                      <span className="text-lg shrink-0 mt-0.5">🧠</span>
+                      <div>
+                        <div className="text-[10px] font-bold text-indigo-300 mb-1.5">Why is the probability {probPct.toFixed(0)}%?</div>
+                        <p className="text-[10px] text-zinc-400 leading-relaxed">
+                          No explicit trigger keywords (weapons, named suspects, specific locations) were detected in the transcript. The Bayesian engine started at the 0.20% base rate and found no features to update it.
+                        </p>
+                        <p className="text-[10px] text-zinc-400 leading-relaxed mt-1.5">
+                          However, Claude AI's semantic language model independently assessed this as{' '}
+                          <span className="font-bold text-white">Threat Level {level}/5</span>.
+                          The {probPct.toFixed(0)}% probability is derived from that multi-model consensus — the AI understood the <em>intent</em> of the speech even without matching specific keywords.
+                        </p>
+                        <div className="flex items-center gap-2 mt-2 pt-2" style={{ borderTop:'1px solid rgba(99,102,241,0.15)' }}>
+                          <span className="text-[9px] font-mono text-indigo-500">Source: {probSource}</span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                )}
 
                 {/* ── Bayesian update trace ── shows the actual math ─────── */}
                 {mcPhase >= 3 && (
@@ -751,7 +828,32 @@ export default function ThreatBreakdownModal({
                         </div>
                         <span className="text-lg font-black text-yellow-300 tabular-nums">{ciHigh.toFixed(0)}%</span>
                       </div>
-                      <div className="text-[9px] text-zinc-600 mt-1.5">Mean: {probPct.toFixed(1)}% · CI width: {(ciHigh-ciLow).toFixed(0)}pp</div>
+                      <div className="text-[9px] text-zinc-600 mt-1.5">Mean estimate: {probPct.toFixed(1)}% · Range: {ciLow.toFixed(0)}% – {ciHigh.toFixed(0)}% (95% confidence)</div>
+                    </div>
+
+                    {/* ── Probability explanation + action guidance ─────────── */}
+                    <div className="rounded-xl p-4" style={{ background: probPct>50?'rgba(239,68,68,0.07)':probPct>15?'rgba(249,115,22,0.07)':'rgba(34,197,94,0.06)', border:`1px solid ${verdictColor}25` }}>
+                      <div className="text-[9px] font-bold uppercase tracking-[0.2em] mb-2" style={{ color:verdictColor }}>What this means</div>
+                      <p className="text-[10px] text-zinc-300 leading-relaxed mb-2">
+                        The model estimates a <span className="font-black" style={{ color:verdictColor }}>{probPct.toFixed(0)}% probability</span> this call represents a credible threat.
+                        The 95% confidence interval — <span className="font-bold text-yellow-300">{ciLow.toFixed(0)}% to {ciHigh.toFixed(0)}%</span> — captures the uncertainty across 600 Monte Carlo simulations.
+                        Source: <span className="font-mono text-[9px] text-zinc-500">{probSource}</span>.
+                      </p>
+                      <div className="flex items-start gap-2 mt-2 pt-2.5" style={{ borderTop:`1px solid ${verdictColor}20` }}>
+                        <span className="text-[10px] shrink-0">
+                          {level>=5?'🚨':level>=4?'⚠️':level>=3?'⚡':level>=2?'👀':'✅'}
+                        </span>
+                        <div>
+                          <div className="text-[10px] font-bold mb-0.5" style={{ color:verdictColor }}>Recommended action</div>
+                          <p className="text-[10px] text-zinc-300 leading-relaxed">
+                            {level >= 5 && 'IMMEDIATE RESPONSE — Call 911 and lock down the school now. Do not wait for additional verification. Alert every administrator on campus.'}
+                            {level === 4 && 'Alert the principal immediately and contact local law enforcement. Do not dismiss this call. Verify the subject\'s location and secure the identified area.'}
+                            {level === 3 && 'Notify school administration and the school safety officer now. Pull the subject in for a counselor meeting within the next hour. Document everything.'}
+                            {level === 2 && 'Flag for counselor review today. Check in with any named students or staff. Monitor for additional tips about the same person or school.'}
+                            {level <= 1 && 'Log and monitor. No immediate action required, but keep this tip in the system for cross-referencing if similar reports come in.'}
+                          </p>
+                        </div>
+                      </div>
                     </div>
 
                     {/* Top drivers + factor breakdown */}

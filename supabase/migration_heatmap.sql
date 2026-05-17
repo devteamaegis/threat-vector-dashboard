@@ -1,0 +1,3 @@
+ALTER TABLE tips ADD COLUMN IF NOT EXISTS call_lat float8;
+ALTER TABLE tips ADD COLUMN IF NOT EXISTS call_lng float8;
+ALTER TABLE tips ADD COLUMN IF NOT EXISTS location_context text;

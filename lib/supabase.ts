@@ -48,6 +48,10 @@ export type Tip = {
   bayes_features_hit?: string[] | null
   bayes_top_drivers?: Array<{ feature?: string; keyword: string; ratio?: number; weight?: number }> | null
   three_model_consensus?: boolean | null
+  threat_level?: number | null
+  call_lat?: number | null
+  call_lng?: number | null
+  location_context?: string | null
 }
 
 export type AttendanceLog = {
