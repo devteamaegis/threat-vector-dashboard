@@ -903,10 +903,10 @@ export default function Dashboard() {
   const resolved = tips.filter(t => t.status === 'resolved').length
 
   const ORB_LABEL: Record<OrbMode, string> = {
-    idle: 'STANDBY', listening: 'CALL ACTIVE', thinking: 'ANALYZING', speaking: 'INCOMING', critical: 'CRITICAL ALERT',
+    idle: 'STANDBY', listening: 'CALL ACTIVE', thinking: 'ANALYZING', speaking: 'INCOMING', critical: 'CRITICAL ALERT', attendance: 'ATTENDANCE',
   }
   const ORB_COLOR: Record<OrbMode, string> = {
-    idle: 'text-zinc-400', listening: 'text-orange-400', thinking: 'text-blue-400', speaking: 'text-cyan-400', critical: 'text-red-400',
+    idle: 'text-zinc-400', listening: 'text-orange-400', thinking: 'text-blue-400', speaking: 'text-cyan-400', critical: 'text-red-400', attendance: 'text-emerald-500',
   }
 
   return (

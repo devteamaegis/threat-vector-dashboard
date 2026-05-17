@@ -3,7 +3,7 @@
 import { useEffect, useRef } from 'react'
 import type { MeshBasicMaterial, LineBasicMaterial } from 'three'
 
-export type OrbMode = 'idle' | 'listening' | 'thinking' | 'speaking' | 'critical'
+export type OrbMode = 'idle' | 'listening' | 'thinking' | 'speaking' | 'critical' | 'attendance'
 
 interface Props { mode: OrbMode; size?: number }
 
@@ -114,29 +114,37 @@ export default function ClaudiaOrb({ mode, size = 200 }: Props) {
         const c = ptGeo.attributes.color.array as Float32Array
         for (let i = 0; i < PARTICLE_COUNT; i++) {
           if (m === 'critical') {
-            c[i*3] = 0.8 + Math.random() * 0.2
-            c[i*3+1] = 0.05 + Math.random() * 0.1
-            c[i*3+2] = 0.05 + Math.random() * 0.1
+            // Deep red + orange flicker
+            c[i*3] = 0.85 + Math.random() * 0.15
+            c[i*3+1] = 0.05 + Math.random() * 0.18
+            c[i*3+2] = 0.02 + Math.random() * 0.05
           } else if (m === 'listening') {
-            c[i*3]=0.9; c[i*3+1]=0.3+Math.random()*0.2; c[i*3+2]=0.05
+            // Warm amber — call active
+            c[i*3]=0.95; c[i*3+1]=0.5+Math.random()*0.2; c[i*3+2]=0.02
           } else if (m === 'thinking') {
-            c[i*3]=0.1+Math.random()*0.2; c[i*3+1]=0.4; c[i*3+2]=1.0
+            // Cool electric blue
+            c[i*3]=0.05+Math.random()*0.15; c[i*3+1]=0.35+Math.random()*0.2; c[i*3+2]=1.0
           } else if (m === 'speaking') {
-            const hue = (i / PARTICLE_COUNT + t * 0.05) % 1
-            c[i*3]=Math.abs(Math.sin(hue*Math.PI))*0.3
-            c[i*3+1]=0.5+Math.abs(Math.cos(hue*Math.PI))*0.4
-            c[i*3+2]=0.85
+            // Cyan-to-violet shimmer
+            const hue = (i / PARTICLE_COUNT + t * 0.06) % 1
+            c[i*3]=Math.abs(Math.sin(hue*Math.PI))*0.4
+            c[i*3+1]=0.55+Math.abs(Math.cos(hue*Math.PI))*0.35
+            c[i*3+2]=0.9+Math.random()*0.1
+          } else if (m === 'attendance') {
+            // Soft emerald green — calm school admin
+            c[i*3]=0.02+Math.random()*0.08
+            c[i*3+1]=0.7+Math.random()*0.25
+            c[i*3+2]=0.35+Math.random()*0.2
           } else {
+            // Idle: default cyan
             c[i*3]=0.05+Math.random()*0.1; c[i*3+1]=0.55+Math.random()*0.35; c[i*3+2]=0.85+Math.random()*0.15
           }
         }
         ptGeo.attributes.color.needsUpdate = true
-        ;(glowMesh.material as MeshBasicMaterial).color.setHex(
-          m === 'critical' ? 0xef4444 : m === 'listening' ? 0xf97316 : 0x06b6d4
-        )
-        ;(lineMat as LineBasicMaterial).color.setHex(
-          m === 'critical' ? 0xef4444 : m === 'listening' ? 0xf97316 : 0x06b6d4
-        )
+        const glowHex = m === 'critical' ? 0xef4444 : m === 'listening' ? 0xf97316
+          : m === 'thinking' ? 0x3b82f6 : m === 'attendance' ? 0x22c55e : 0x06b6d4
+        ;(glowMesh.material as MeshBasicMaterial).color.setHex(glowHex)
+        ;(lineMat as LineBasicMaterial).color.setHex(glowHex)
       }
 
       let lastMode = 'idle'
@@ -149,9 +157,9 @@ export default function ClaudiaOrb({ mode, size = 200 }: Props) {
 
         const pos = ptGeo.attributes.position.array as Float32Array
         const isCrit = m === 'critical'
-        const speedMult = isCrit ? 1.6 : m==='speaking'?1.1 : m==='thinking'?0.7 : m==='listening'?0.55 : 0.18
-        const radiusMult = isCrit ? 1.2 : m==='speaking'?1.1 : m==='listening'?0.95 : 1.0
-        const breathAmp  = isCrit ? 0.14 : m==='speaking'?0.10 : m==='listening'?0.06 : 0.025
+        const speedMult = isCrit ? 1.8 : m==='speaking'?1.2 : m==='thinking'?0.7 : m==='listening'?0.6 : m==='attendance'?0.3 : 0.18
+        const radiusMult = isCrit ? 1.25 : m==='speaking'?1.12 : m==='listening'?0.95 : m==='attendance'?1.05 : 1.0
+        const breathAmp  = isCrit ? 0.18 : m==='speaking'?0.12 : m==='listening'?0.07 : m==='attendance'?0.04 : 0.025
 
         for (let i = 0; i < PARTICLE_COUNT; i++) {
           const ph = phases[i]
@@ -204,13 +212,13 @@ export default function ClaudiaOrb({ mode, size = 200 }: Props) {
         }
 
         rings.forEach((ring, i) => {
-          const active = m === 'speaking' || m === 'critical' || m === 'listening'
+          const active = m === 'speaking' || m === 'critical' || m === 'listening' || m === 'attendance'
           if (active) {
-            const ph = ringPhases[i] + t * (isCrit ? 3.5 : m==='listening' ? 2.5 : 1.8)
-            const s = 1 + Math.sin(ph) * (isCrit ? 0.25 : 0.15)
+            const ph = ringPhases[i] + t * (isCrit ? 3.5 : m==='listening' ? 2.5 : m==='attendance' ? 1.2 : 1.8)
+            const s = 1 + Math.sin(ph) * (isCrit ? 0.28 : m==='attendance' ? 0.10 : 0.15)
             ring.scale.setScalar(s)
-            ;(ring.material as MeshBasicMaterial).color.setHex(isCrit ? 0xef4444 : m==='listening'?0xf97316 : 0x06b6d4)
-            ;(ring.material as MeshBasicMaterial).opacity = (isCrit ? 0.3 : 0.15) + Math.sin(ph) * 0.15
+            ;(ring.material as MeshBasicMaterial).color.setHex(isCrit ? 0xef4444 : m==='listening'?0xf97316 : m==='attendance'?0x22c55e : 0x06b6d4)
+            ;(ring.material as MeshBasicMaterial).opacity = (isCrit ? 0.35 : m==='attendance'?0.12 : 0.15) + Math.sin(ph) * 0.15
           } else {
             ;(ring.material as MeshBasicMaterial).opacity = 0
           }
@@ -224,5 +232,9 @@ export default function ClaudiaOrb({ mode, size = 200 }: Props) {
     return () => { mounted = false; cancelAnimationFrame(animId) }
   }, [size])
 
-  return <canvas ref={canvasRef} width={size} height={size} style={{ display:'block', width:size, height:size }} />
+  return (
+    <div className={`orb-${mode}`} style={{ display:'inline-block', lineHeight:0 }}>
+      <canvas ref={canvasRef} width={size} height={size} style={{ display:'block', width:size, height:size }} />
+    </div>
+  )
 }
