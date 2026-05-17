@@ -10,8 +10,8 @@ const robotoSlab = Roboto_Slab({
 });
 
 export const metadata: Metadata = {
-  title: "Threat Vector — Command Center",
-  description: "Anonymous school threat reporting and intelligence dashboard",
+  title: "Kairos — AI Command Center",
+  description: "Anonymous school threat reporting and AI triage dashboard",
 };
 
 // Injected before React hydrates — prevents flash of wrong theme

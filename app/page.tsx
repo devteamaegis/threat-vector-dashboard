@@ -70,13 +70,13 @@ const PIPELINE_STEPS = [
 // Demo: realistic anonymous call, no names/identifying info
 const DEMO_WORDS = "Hi I need to report something anonymously . There is a student at Westbrook Academy who has been telling kids he is going to do something serious next week . He showed a photo of what looked like a weapon on his phone to someone in my class . Multiple people have seen it and we are all scared . This has been building for the past few weeks and the teachers don't know .".split(' ')
 
-const DEMO_SMS = `[THREAT VECTOR] ⚠️ CRITICAL
+const DEMO_SMS = `[Kairos] ⚠️ CRITICAL
 School: Westbrook Academy
 Level: 5/5 — Immediate Response Required
 Caller: distressed · urgent
 Pattern: escalating over 2 weeks
 Action: IMMEDIATE RESPONSE
-— Threat Vector AI`
+— Kairos AI`
 
 function buildDemoTip(): Tip {
   return {
@@ -276,7 +276,7 @@ function ImpactCard({ show, onDismiss }: { show: boolean; onDismiss: () => void 
             <div className="w-px h-8 bg-zinc-100" />
           </div>
           <div className="flex flex-col items-center gap-1.5">
-            <div className="text-[9px] uppercase tracking-widest text-cyan-600">Threat Vector</div>
+            <div className="text-[9px] uppercase tracking-widest text-cyan-600">Kairos</div>
             <div className="text-5xl font-black text-red-400 tabular-nums leading-none">8.2s</div>
             <div className="text-[9px] text-cyan-500">AI-triaged · principal notified</div>
             <div className="text-[9px] text-zinc-400">SMS + email + logged</div>
@@ -1120,9 +1120,10 @@ export default function Dashboard() {
           {/* Left: brand + tabs */}
           <div className="flex items-center gap-5">
             <div className="flex items-center gap-2.5">
-              <div className="w-6 h-6 rounded-md bg-red-600 flex items-center justify-center text-white text-[9px] font-black">TV</div>
+              {/* Logo */}
+              <img src="/kairos-logo.svg" alt="Kairos" className="w-8 h-8 shrink-0" style={{ filter: 'brightness(1)' }} />
               <div>
-                <div className="text-[11px] font-bold text-[var(--foreground)] tracking-[0.1em] leading-none">THREAT VECTOR</div>
+                <div className="text-[13px] font-black text-[var(--foreground)] tracking-[0.06em] leading-none">Kairos</div>
                 <div className="text-[8px] text-[var(--muted)] leading-none mt-0.5 tracking-widest">AI COMMAND CENTER</div>
               </div>
             </div>

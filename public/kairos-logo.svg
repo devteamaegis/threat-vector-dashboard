@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 120" fill="none">
+  <!-- Head -->
+  <circle cx="60" cy="42" r="16" fill="white"/>
+  <!-- Inner arc (shoulders / gray) -->
+  <path d="M 36 72 Q 60 58 84 72" stroke="#9ca3af" stroke-width="9" stroke-linecap="round" fill="none"/>
+  <!-- Middle arc (white) -->
+  <path d="M 18 88 Q 60 60 102 88" stroke="white" stroke-width="10" stroke-linecap="round" fill="none"/>
+  <!-- Outer arc (gray) -->
+  <path d="M 2 106 Q 60 68 118 106" stroke="#6b7280" stroke-width="9" stroke-linecap="round" fill="none"/>
+</svg>
