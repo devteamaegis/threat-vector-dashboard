@@ -568,6 +568,98 @@ function LiveCallOverlay({ call }: { call: { callId: string, transcript: string,
   )
 }
 
+// Demo call transcript popup — floats top-right during demo
+function DemoCallOverlay({ transcript, transcriptFull, waveActive, pipelineStep }: {
+  transcript: string
+  transcriptFull: boolean
+  waveActive: boolean
+  pipelineStep: number
+}) {
+  if (!transcript && pipelineStep < 0) return null
+  const stepsDone = pipelineStep >= 0 ? Math.min(pipelineStep, PIPELINE_STEPS.length) : 0
+  const pct = transcript.length > 0
+    ? Math.min(95, (transcript.split(' ').length / DEMO_WORDS.length) * 45)
+    : 0
+  return (
+    <div className="fixed top-16 right-4 z-[110] w-80 flex flex-col gap-2 pointer-events-none">
+      {/* Transcript card */}
+      <div className="rounded-xl overflow-hidden shadow-2xl"
+        style={{
+          background: 'rgba(6,8,13,0.96)',
+          backdropFilter: 'blur(32px)',
+          border: '1px solid rgba(6,182,212,0.35)',
+          boxShadow: '0 0 32px rgba(6,182,212,0.12)',
+          animation: 'slideDownOverlay 0.35s cubic-bezier(0.34,1.4,0.64,1)',
+        }}>
+        {/* Header */}
+        <div className="flex items-center gap-2 px-4 py-2.5"
+          style={{ borderBottom: '1px solid rgba(6,182,212,0.15)', background: 'rgba(6,182,212,0.07)' }}>
+          <span className="w-2 h-2 rounded-full bg-red-500 animate-pulse" />
+          <span className="text-[10px] font-bold uppercase tracking-widest text-red-400">Live Call</span>
+          <span className="ml-auto text-[9px] text-zinc-400">Westbrook Academy</span>
+          <Waveform active={waveActive} />
+        </div>
+
+        {/* Transcript */}
+        <div className="px-4 py-3">
+          <div className="text-[9px] uppercase tracking-widest text-zinc-500 mb-1.5">Transcript</div>
+          <p className="text-[12px] text-zinc-200 leading-relaxed min-h-[2.5rem]">
+            {transcript}
+            {!transcriptFull && transcript.length > 0 && (
+              <span className="inline-block w-0.5 h-3.5 bg-cyan-400 animate-pulse ml-0.5 align-text-bottom" />
+            )}
+            {transcriptFull && <span className="text-cyan-400 ml-1.5 text-[11px]">✓ complete</span>}
+          </p>
+        </div>
+
+        {/* Progress bar */}
+        {transcript.length > 0 && (
+          <div className="px-4 pb-3">
+            <div className="w-full h-1 rounded-full bg-zinc-800 overflow-hidden">
+              <div className="h-full rounded-full transition-all duration-300"
+                style={{ width: `${pct}%`, background: 'linear-gradient(90deg, #06b6d4, #3b82f6)' }} />
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* Pipeline status card — appears when processing starts */}
+      {pipelineStep >= 0 && (
+        <div className="rounded-xl overflow-hidden shadow-xl"
+          style={{
+            background: 'rgba(6,8,13,0.94)',
+            backdropFilter: 'blur(24px)',
+            border: '1px solid rgba(255,255,255,0.07)',
+            animation: 'slideDownOverlay 0.3s cubic-bezier(0.34,1.4,0.64,1)',
+          }}>
+          <div className="px-4 py-2.5">
+            <div className="text-[9px] uppercase tracking-widest text-zinc-500 mb-2">AI Pipeline</div>
+            <div className="flex items-center gap-1 flex-wrap">
+              {PIPELINE_STEPS.map((step, i) => {
+                const done   = i < pipelineStep
+                const active = i === pipelineStep
+                return (
+                  <div key={step.id} className={`flex items-center gap-1 px-1.5 py-0.5 rounded text-[9px] transition-all duration-300 ${
+                    active ? 'bg-cyan-950/80 text-cyan-400 border border-cyan-500/40' :
+                    done   ? 'text-zinc-500' : 'text-zinc-700'
+                  }`}>
+                    <span>{step.icon}</span>
+                    {active && <span className="font-bold">{step.label}</span>}
+                    {done && <span className="text-green-500 text-[8px]">✓</span>}
+                  </div>
+                )
+              })}
+            </div>
+            {stepsDone === PIPELINE_STEPS.length && (
+              <div className="mt-2 text-[10px] font-bold text-green-400 tracking-wide">✓ PRINCIPAL NOTIFIED</div>
+            )}
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}
+
 // Tip drawer (detail panel)
 function TipDrawer({ tip, onClose, onStatusChange }: { tip: Tip; onClose: () => void; onStatusChange?: (id: string, status: string) => void }) {
   const urgency = tip.urgency?.toLowerCase() ?? 'low'
@@ -1035,11 +1127,20 @@ export default function Dashboard() {
         @keyframes slideUpNotif { from{transform:translateY(80px);opacity:0} to{transform:translateY(0);opacity:1} }
         @keyframes fadeInScale { from{transform:scale(0.92);opacity:0} to{transform:scale(1);opacity:1} }
         @keyframes scanLine { 0%{transform:translateY(0)} 100%{transform:translateY(100%)} }
+        @keyframes slideDownOverlay { from{transform:translateY(-12px);opacity:0} to{transform:translateY(0);opacity:1} }
       `}</style>
 
-      <div className="fixed inset-0 flex flex-col overflow-hidden" style={{ background: 'var(--background)', fontFamily: 'var(--font-geist-sans), system-ui, sans-serif' }}>
+      <div className="fixed inset-0 flex flex-col overflow-hidden" style={{ background: 'var(--background)', fontFamily: 'var(--font-roboto-slab), "Roboto Slab", Georgia, serif' }}>
 
         {liveCall && <LiveCallOverlay call={liveCall} />}
+        {demoRunning && (
+          <DemoCallOverlay
+            transcript={transcript}
+            transcriptFull={transcriptFull}
+            waveActive={waveActive}
+            pipelineStep={pipelineStep}
+          />
+        )}
 
         {/* Critical flash */}
         {criticalFlash && (
@@ -1196,23 +1297,6 @@ export default function Dashboard() {
               </div>
 
               {(waveActive || orbMode === 'listening') && <Waveform active={waveActive || orbMode === 'listening'} />}
-
-              {/* Live transcript */}
-              {demoRunning && (
-                <div className="w-full max-w-lg rounded-lg px-4 py-3"
-                  style={{ background: 'var(--surface)', border: '1px solid rgba(6,182,212,0.25)', boxShadow: '0 2px 12px rgba(0,0,0,0.06)' }}>
-                  <div className="flex items-center gap-2 mb-2">
-                    <span className="w-1.5 h-1.5 rounded-full bg-red-500 animate-pulse" />
-                    <span className="text-[8px] font-bold uppercase tracking-[0.25em] text-zinc-400">Live Transcript</span>
-                    <div className="ml-auto"><Waveform active={waveActive} /></div>
-                  </div>
-                  <p className="text-[12px] text-zinc-800 leading-relaxed min-h-[2.5rem]">
-                    {transcript}
-                    {!transcriptFull && <span className="inline-block w-0.5 h-3.5 bg-cyan-400 animate-pulse ml-0.5 align-text-bottom" />}
-                    {transcriptFull && <span className="text-cyan-500 ml-1">✓</span>}
-                  </p>
-                </div>
-              )}
 
               {/* Pipeline */}
               {demoRunning && pipelineStep >= 0 && (
