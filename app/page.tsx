@@ -1252,22 +1252,34 @@ export default function Dashboard() {
   }, [])
 
   useEffect(() => {
+    // ── Initial load ────────────────────────────────────────────────────────────
     fetch('/api/tips')
       .then(r => r.json())
       .then(data => { setTips(Array.isArray(data) ? data : []); setLoading(false) })
       .catch(() => setLoading(false))
 
+    // ── Helper: handle a newly-arrived tip (from Realtime OR polling) ───────────
+    const handleNewTip = (t: Tip, demoIsRunning: boolean) => {
+      setTips(prev => {
+        if (prev.some(x => x.id === t.id)) return prev   // deduplicate
+        return [t, ...prev]
+      })
+      setFreshIds(prev => new Set([...prev, t.id]))
+      if (!demoIsRunning) { setOrbMode('speaking'); setTimeout(() => setOrbMode('idle'), 6000) }
+      setTimeout(() => setFreshIds(f => { const n = new Set(f); n.delete(t.id); return n }), 8000)
+    }
+
+    // ── Supabase Realtime subscription (fires if table is in realtime publication) ─
     const ch = supabase.channel('tips-live')
       .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'tips' }, payload => {
-        const t = payload.new as Tip
-        setTips(prev => [t, ...prev])
-        setFreshIds(prev => new Set([...prev, t.id]))
-        if (!demoRunning) { setOrbMode('speaking'); setTimeout(() => setOrbMode('idle'), 6000) }
-        setTimeout(() => setFreshIds(f => { const n = new Set(f); n.delete(t.id); return n }), 8000)
+        handleNewTip(payload.new as Tip, demoRunning)
       })
-      .subscribe()
+      .subscribe((status) => {
+        if (status === 'SUBSCRIBED') console.log('[Kairos] Realtime connected ✓')
+        if (status === 'CHANNEL_ERROR') console.warn('[Kairos] Realtime not enabled — relying on polling fallback')
+      })
 
-    // Subscribe to live call updates
+    // ── Subscribe to live call updates ──────────────────────────────────────────
     const liveCh = supabase.channel('live-calls-ui')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'live_calls' }, payload => {
         const d = payload.new as any
@@ -1275,13 +1287,38 @@ export default function Dashboard() {
           setLiveCall({ callId: d.call_id, transcript: d.words_so_far, probability: d.probability_pct, threatLevel: d.threat_level, school: d.school_name || 'Unknown School', features: d.top_features || [] })
           setOrbMode(d.threat_level >= 4 ? 'critical' : 'speaking')
         } else if (d.status === 'complete') {
-          // Keep overlay visible for 20s on high/critical, 8s on lower threats
           const dismissDelay = (d.threat_level ?? 1) >= 4 ? 20000 : 8000
           setTimeout(() => { setLiveCall(null); setOrbMode('idle') }, dismissDelay)
         }
       })
       .subscribe()
-    return () => { supabase.removeChannel(ch); supabase.removeChannel(liveCh) }
+
+    // ── Polling fallback — catches tips even when Realtime is not configured ────
+    // Runs every 12 seconds; detects new IDs vs current state and treats them as
+    // fresh arrivals (same highlight + orb behaviour as Realtime inserts).
+    let knownIds: Set<string> | null = null  // null = "not yet primed"
+    const pollTimer = setInterval(() => {
+      fetch('/api/tips')
+        .then(r => r.json())
+        .then((fresh: Tip[]) => {
+          if (!Array.isArray(fresh)) return
+          if (knownIds === null) {
+            // First poll — just prime the known-set, don't treat everything as new
+            knownIds = new Set(fresh.map(t => t.id))
+            return
+          }
+          const newTips = fresh.filter(t => !knownIds!.has(t.id))
+          if (newTips.length === 0) return
+          newTips.forEach(t => { knownIds!.add(t.id); handleNewTip(t, demoRunning) })
+        })
+        .catch(() => {})
+    }, 12000)
+
+    return () => {
+      supabase.removeChannel(ch)
+      supabase.removeChannel(liveCh)
+      clearInterval(pollTimer)
+    }
   }, [demoRunning])
 
   useEffect(() => {
