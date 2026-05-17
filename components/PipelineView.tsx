@@ -1,6 +1,11 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import React, { useState, useEffect } from 'react'
+import {
+  IconMicrophone, IconPhone, IconGlobe, IconBrain, IconSparkle,
+  IconBarChart, IconSearch, IconDna, IconCompass, IconDatabase,
+  IconSms, IconMail, IconCloud, IconBolt,
+} from '@/components/Icons'
 
 // ── Node definitions ──────────────────────────────────────────────────────────
 
@@ -8,7 +13,7 @@ interface PipelineNode {
   id: string
   label: string
   sublabel: string
-  icon: string
+  icon: React.ReactNode
   layer: 'input' | 'ingest' | 'process' | 'enrich' | 'output'
   col: number
   row: number
@@ -21,79 +26,79 @@ interface PipelineNode {
 
 const NODES: PipelineNode[] = [
   {
-    id: 'caller', label: 'Anonymous Caller', sublabel: 'Any language · 70+', icon: '📞',
+    id: 'caller', label: 'Anonymous Caller', sublabel: 'Any language · 70+', icon: <IconMicrophone size={18} />,
     layer: 'input', col: 0, row: 0, color: '#06b6d4',
     detail: 'Anyone calls the Kairos hotline anonymously. No name, no number. 70+ languages supported — processed natively by Gemini Live, no pre-translation.',
   },
   {
-    id: 'agentphone', label: 'AgentPhone', sublabel: 'Voice AI · STT', icon: '🎙️',
+    id: 'agentphone', label: 'AgentPhone', sublabel: 'Voice AI · STT', icon: <IconPhone size={18} />,
     layer: 'ingest', col: 1, row: 0, color: '#06b6d4', sponsor: 'AgentPhone', latency: '<2s',
     detail: 'AgentPhone hosts the AI voice agent. Handles incoming calls, real-time speech-to-text, and POSTs the transcript to the Kairos webhook.',
     prize: 'Best Use of AgentPhone',
   },
   {
-    id: 'gemini_live', label: 'Gemini Live', sublabel: 'Multilingual · Translate', icon: '🌐',
+    id: 'gemini_live', label: 'Gemini Live', sublabel: 'Multilingual · Translate', icon: <IconGlobe size={18} />,
     layer: 'process', col: 2, row: 0, color: '#4285f4', sponsor: 'Google DeepMind', latency: '280ms',
     detail: 'Gemini 2.0 Flash Live API streams in real time. Detects language, provides English translation, returns initial threat level 1-5. First school safety platform handling non-English callers natively.',
     prize: 'Best Use of Gemini',
   },
   {
-    id: 'claude', label: 'Claude Sonnet', sublabel: 'Threat classify · Level 1-5', icon: '🧠',
+    id: 'claude', label: 'Claude Sonnet', sublabel: 'Threat classify · Level 1-5', icon: <IconBrain size={18} />,
     layer: 'process', col: 2, row: 1, color: '#f97316', sponsor: 'Anthropic', latency: '2.4s',
     detail: 'Deep semantic threat assessment: emotion analysis, credibility scoring, key-fact extraction, escalation risk, and recommended action. Returns structured JSON.',
   },
   {
-    id: 'gemini_verify', label: 'Gemini Flash', sublabel: 'Consensus verify', icon: '✦',
+    id: 'gemini_verify', label: 'Gemini Flash', sublabel: 'Consensus verify', icon: <IconSparkle size={18} />,
     layer: 'process', col: 2, row: 2, color: '#4285f4', sponsor: 'Google DeepMind', latency: '3.1s',
     detail: 'Independently re-scores without seeing Claude\'s answer. If both models agree within 1 level, CONSENSUS locks in the higher score. Divergence triggers manual review.',
     prize: 'Best Use of Gemini',
   },
   {
-    id: 'bayes', label: 'Bayesian Monte Carlo', sublabel: 'Probability · Confidence', icon: '📊',
+    id: 'bayes', label: 'Bayesian Monte Carlo', sublabel: 'Probability · Confidence', icon: <IconBarChart size={18} />,
     layer: 'process', col: 2, row: 3, color: '#8b5cf6', latency: '50ms',
     detail: 'Combines Claude + Gemini scores with confidence and historical base rates. 1000 Monte Carlo samples → posterior mean = final threat score.',
   },
   {
-    id: 'moss', label: 'Moss', sublabel: 'Semantic search · Context', icon: '🔍',
+    id: 'moss', label: 'Moss', sublabel: 'Semantic search · Context', icon: <IconSearch size={18} />,
     layer: 'enrich', col: 3, row: 0, color: '#6366f1', sponsor: 'Moss', latency: '620ms',
     detail: 'Semantic vector search over past threats. Returns top-K similar incidents to inform AI assessment. Enables cross-school pattern detection.',
     prize: 'Best Use of Moss',
   },
   {
-    id: 'supermemory', label: 'Supermemory', sublabel: 'Pattern memory · History', icon: '🧬',
+    id: 'supermemory', label: 'Supermemory', sublabel: 'Pattern memory · History', icon: <IconDna size={18} />,
     layer: 'enrich', col: 3, row: 1, color: '#f59e0b', sponsor: 'Supermemory', latency: '4.1s',
     detail: 'Persists structured memories about threat patterns and repeat schools. AI can recall "this school had 3 weapon tips this semester" across sessions.',
     prize: 'Best Use of Supermemory',
   },
   {
-    id: 'browseruse', label: 'Browser Use', sublabel: 'OSINT · Background check', icon: '🌍',
+    id: 'browseruse', label: 'Browser Use', sublabel: 'OSINT · Background check', icon: <IconCompass size={18} />,
     layer: 'enrich', col: 3, row: 2, color: '#10b981', latency: '8s',
     detail: 'For Level 4-5 threats, autonomously searches public social media and local news for corroborating evidence. OSINT without human involvement.',
     prize: 'Best Use of Browser Use ($3k)',
   },
   {
-    id: 'supabase', label: 'Supabase', sublabel: 'Realtime DB · Dashboard', icon: '🗄️',
+    id: 'supabase', label: 'Supabase', sublabel: 'Realtime DB · Dashboard', icon: <IconDatabase size={18} />,
     layer: 'output', col: 4, row: 0, color: '#10b981', sponsor: 'Supabase', latency: '3.4s',
     detail: '25+ structured fields written to Postgres. Realtime subscriptions push to the live dashboard instantly. 10,000 seeded nodes power the Threat Intelligence graph.',
   },
   {
-    id: 'twilio', label: 'Twilio SMS', sublabel: 'Principal alert · Immediate', icon: '📱',
+    id: 'twilio', label: 'Twilio SMS', sublabel: 'Principal alert · Immediate', icon: <IconSms size={18} />,
     layer: 'output', col: 4, row: 1, color: '#ef4444', latency: '4.6s',
     detail: 'For Level 3+ threats: immediate SMS to the principal with threat level, school name, emotion, and recommended action. First responder notified in <5s.',
   },
   {
-    id: 'agentmail', label: 'AgentMail', sublabel: 'Safety officer brief', icon: '✉️',
+    id: 'agentmail', label: 'AgentMail', sublabel: 'Safety officer brief', icon: <IconMail size={18} />,
     layer: 'output', col: 4, row: 2, color: '#8b5cf6', sponsor: 'AgentMail', latency: '5.2s',
     detail: 'Structured intelligence brief to district safety officer — full transcript, AI analysis, confidence scores, key facts, and next steps.',
     prize: 'Best Use of AgentMail',
   },
   {
-    id: 'aws', label: 'AWS S3', sublabel: 'Immutable archive · Audit', icon: '☁️',
+    id: 'aws', label: 'AWS S3', sublabel: 'Immutable archive · Audit', icon: <IconCloud size={18} />,
     layer: 'output', col: 4, row: 3, color: '#ff9900', latency: '3.7s',
     detail: 'Every transcript archived to S3 as an immutable compliance record. Permanent, tamper-proof log of every threat including raw AI output.',
   },
   {
-    id: 'sponge', label: 'Sponge', sublabel: 'Micropayments · Per-tip', icon: '💳',
+    id: 'sponge', label: 'Sponge', sublabel: 'Micropayments · Per-tip', icon: <IconBolt size={18} />,
     layer: 'output', col: 4, row: 4, color: '#14b8a6', sponsor: 'Sponge', latency: '5.8s',
     detail: 'Per-tip micropayments from the school district. Pay-as-you-go safety — districts only pay for actual threats processed, fractions of a cent each.',
     prize: 'Best Use of Sponge',
@@ -342,10 +347,19 @@ export default function PipelineView() {
                   fill="none" stroke={node.color} strokeWidth="1" strokeOpacity="0.3" />
 
                 {/* Icon */}
-                <text x={x + 30} y={y + NODE_H / 2 + 1}
-                  fontSize="18" dominantBaseline="middle" textAnchor="middle">
-                  {node.icon}
-                </text>
+                <foreignObject
+                  x={x + 30 - 11}
+                  y={y + NODE_H / 2 - 11}
+                  width={22}
+                  height={22}
+                  style={{ overflow: 'visible' }}
+                >
+                  <div
+                    style={{ width: 22, height: 22, display: 'flex', alignItems: 'center', justifyContent: 'center', color: node.color }}
+                  >
+                    {node.icon}
+                  </div>
+                </foreignObject>
 
                 {/* Label */}
                 <text x={x + 56} y={y + 28} fontSize="11.5" fontWeight="700"

@@ -11,6 +11,13 @@ const ThemeToggle         = dynamic(() => import('@/components/ThemeToggle'),   
 const PipelineView        = dynamic(() => import('@/components/PipelineView'),        { ssr: false })
 const ThreatBreakdownModal = dynamic(() => import('@/components/ThreatBreakdownModal'), { ssr: false })
 
+import {
+  IconWeapon, IconBullying, IconDrugs, IconThreat, IconSelfHarm,
+  IconVandalism, IconHarassment, IconFile, IconGrid, IconEye, IconFlow,
+  IconGlobe, IconSearch, IconBrain, IconSparkle, IconDatabase,
+  IconCloud, IconDna, IconPhone, IconMail, IconCreditCard,
+} from '@/components/Icons'
+
 // ─── Constants ────────────────────────────────────────────────────────────────
 
 const URGENCY_BG: Record<string, string> = {
@@ -19,9 +26,18 @@ const URGENCY_BG: Record<string, string> = {
   medium:   'bg-yellow-500/90 text-black',
   low:      'bg-slate-600/80 text-zinc-900',
 }
-const CATEGORY_ICON: Record<string, string> = {
-  weapon:'🔫', bullying:'👊', drugs:'💊', threat:'⚠️',
-  self_harm:'🚨', vandalism:'🔨', harassment:'📣', other:'📋',
+function CategoryIcon({ category, size = 14 }: { category: string; size?: number }) {
+  const cls = "shrink-0"
+  switch (category) {
+    case 'weapon':     return <IconWeapon     size={size} className={cls} />
+    case 'bullying':   return <IconBullying   size={size} className={cls} />
+    case 'drugs':      return <IconDrugs      size={size} className={cls} />
+    case 'threat':     return <IconThreat     size={size} className={cls} />
+    case 'self_harm':  return <IconSelfHarm   size={size} className={cls} />
+    case 'vandalism':  return <IconVandalism  size={size} className={cls} />
+    case 'harassment': return <IconHarassment size={size} className={cls} />
+    default:           return <IconFile       size={size} className={cls} />
+  }
 }
 const STATUS_STYLE: Record<string, string> = {
   new:       'text-red-400 border-red-800/60 bg-red-950/40',
@@ -55,17 +71,17 @@ const SPONSORS = [
   { name: 'Supabase',        role: 'Realtime DB',        color: '#10b981' },
 ]
 
-const PIPELINE_STEPS = [
-  { id: 'gemini_live', label: 'Gemini Live', icon: '🌐', desc: 'Multilingual detect', ms: 280  },
-  { id: 'moss',        label: 'Moss',        icon: '🔍', desc: 'Semantic context',     ms: 620  },
-  { id: 'claude',      label: 'Claude',      icon: '🧠', desc: 'Threat classify',      ms: 2400 },
-  { id: 'gemini',      label: 'Gemini',      icon: '✦',  desc: 'Consensus verify',     ms: 3100 },
-  { id: 'supabase',    label: 'Supabase',    icon: '🗄️', desc: 'Log to dashboard',     ms: 3400 },
-  { id: 'aws',         label: 'AWS S3',      icon: '☁️', desc: 'Archive transcript',   ms: 3700 },
-  { id: 'memory',      label: 'Memory',      icon: '🧬', desc: 'Pattern storage',      ms: 4100 },
-  { id: 'twilio',      label: 'Twilio',      icon: '📱', desc: 'SMS to principal',     ms: 4600 },
-  { id: 'agentmail',   label: 'AgentMail',   icon: '✉️', desc: 'Email brief',          ms: 5200 },
-  { id: 'stripe',      label: 'Stripe',      icon: '💳', desc: 'Bill district',        ms: 5800 },
+const PIPELINE_STEPS: { id: string; label: string; icon: React.ReactNode; desc: string; ms: number }[] = [
+  { id: 'gemini_live', label: 'Gemini Live', icon: <IconGlobe size={14} />,    desc: 'Multilingual detect', ms: 280  },
+  { id: 'moss',        label: 'Moss',        icon: <IconSearch size={14} />,   desc: 'Semantic context',    ms: 620  },
+  { id: 'claude',      label: 'Claude',      icon: <IconBrain size={14} />,    desc: 'Threat classify',     ms: 2400 },
+  { id: 'gemini',      label: 'Gemini',      icon: <IconSparkle size={14} />,  desc: 'Consensus verify',    ms: 3100 },
+  { id: 'supabase',    label: 'Supabase',    icon: <IconDatabase size={14} />, desc: 'Log to dashboard',    ms: 3400 },
+  { id: 'aws',         label: 'AWS S3',      icon: <IconCloud size={14} />,    desc: 'Archive transcript',  ms: 3700 },
+  { id: 'memory',      label: 'Memory',      icon: <IconDna size={14} />,      desc: 'Pattern storage',     ms: 4100 },
+  { id: 'twilio',      label: 'Twilio',      icon: <IconPhone size={14} />,    desc: 'SMS to principal',    ms: 4600 },
+  { id: 'agentmail',   label: 'AgentMail',   icon: <IconMail size={14} />,     desc: 'Email brief',         ms: 5200 },
+  { id: 'stripe',      label: 'Stripe',      icon: <IconCreditCard size={14} />, desc: 'Bill district',     ms: 5800 },
 ]
 
 // Demo: realistic anonymous call, no names/identifying info
@@ -401,7 +417,6 @@ function CostTracker() {
 // Tip row in feed
 function TipRow({ tip, onClick, fresh, onAnalyze }: { tip: Tip; allTips?: Tip[]; onClick: () => void; fresh?: boolean; onAnalyze?: (tip: Tip) => void }) {
   const urgency = tip.urgency?.toLowerCase() ?? 'low'
-  const icon    = CATEGORY_ICON[tip.category] ?? '📋'
   return (
     <button onClick={onClick}
       className="group w-full text-left p-3 rounded-lg transition-all duration-200 hover:scale-[1.01]"
@@ -412,7 +427,9 @@ function TipRow({ tip, onClick, fresh, onAnalyze }: { tip: Tip; allTips?: Tip[];
       }}>
       <div className="flex items-center justify-between gap-2 mb-1.5">
         <div className="flex items-center gap-1.5 min-w-0">
-          <span className="text-xs">{icon}</span>
+          <span className="text-[var(--muted)] flex items-center justify-center w-4 h-4">
+            <CategoryIcon category={tip.category} size={13} />
+          </span>
           <span className={`shrink-0 text-[9px] font-bold uppercase px-1.5 py-0.5 rounded ${URGENCY_BG[urgency]}`}>{tip.urgency}</span>
           <span className="text-xs text-[var(--foreground)] font-medium truncate capitalize">{tip.category?.replace(/_/g,' ')}</span>
         </div>
@@ -435,7 +452,7 @@ function TipRow({ tip, onClick, fresh, onAnalyze }: { tip: Tip; allTips?: Tip[];
             style={{ color: '#f87171', background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.2)' }}
             onClick={e => { e.stopPropagation(); onAnalyze(tip) }}
           >
-            🔬 Analyze
+            Analyze
           </span>
         )}
       </div>
@@ -905,7 +922,6 @@ function DemoCallOverlay({ pipelineStep }: {
 // Tip drawer (detail panel)
 function TipDrawer({ tip, onClose, onStatusChange, onAnalyze }: { tip: Tip; onClose: () => void; onStatusChange?: (id: string, status: string) => void; onAnalyze?: (tip: Tip) => void }) {
   const urgency = tip.urgency?.toLowerCase() ?? 'low'
-  const icon    = CATEGORY_ICON[tip.category] ?? '📋'
   const score   = tip.ai_triage_score ?? tip.ai_score
   return (
     <div className="fixed inset-0 z-50 flex" onClick={onClose}>
@@ -917,7 +933,9 @@ function TipDrawer({ tip, onClose, onStatusChange, onAnalyze }: { tip: Tip; onCl
         <div className="flex items-center justify-between px-5 py-4 sticky top-0 z-10 border-b"
           style={{ borderColor: 'var(--border)', background: 'var(--surface)' }}>
           <div className="flex items-center gap-2">
-            <span>{icon}</span>
+            <span className="text-[var(--muted)] flex items-center justify-center w-4 h-4">
+              <CategoryIcon category={tip.category} size={14} />
+            </span>
             <span className={`text-[9px] font-bold uppercase px-2 py-0.5 rounded ${URGENCY_BG[urgency]}`}>{tip.urgency}</span>
             <span className="text-sm font-semibold text-[var(--foreground)] capitalize">{tip.category?.replace(/_/g,' ')}</span>
           </div>
@@ -927,7 +945,7 @@ function TipDrawer({ tip, onClose, onStatusChange, onAnalyze }: { tip: Tip; onCl
               className="text-[10px] font-bold px-3 py-1 rounded-lg transition-all hover:opacity-90 flex items-center gap-1.5"
               style={{ background: 'rgba(239,68,68,0.12)', color: '#f87171', border: '1px solid rgba(239,68,68,0.25)' }}
             >
-              🔬 Analyze
+              Analyze
             </button>
           )}
           <a
@@ -937,7 +955,7 @@ function TipDrawer({ tip, onClose, onStatusChange, onAnalyze }: { tip: Tip; onCl
             className="text-[10px] font-semibold px-3 py-1 rounded transition-all hover:opacity-80"
             style={{ background: '#f0f0f0', color: '#94a3b8', border: '1px solid rgba(255,255,255,0.08)' }}
           >
-            📄 Report
+            Report
           </a>
           <button onClick={onClose} className="text-zinc-400 hover:text-zinc-800 transition-colors w-6 h-6 flex items-center justify-center rounded">✕</button>
         </div>
@@ -1086,7 +1104,7 @@ function TipDrawer({ tip, onClose, onStatusChange, onAnalyze }: { tip: Tip; onCl
             >
               <div className="flex items-center justify-between mb-3">
                 <div className="text-[9px] font-bold uppercase tracking-[0.2em] text-zinc-400">Bayesian Threat Probability</div>
-                <span className="text-[9px] font-bold text-red-500 opacity-0 group-hover:opacity-100 transition-opacity">🔬 View Simulation →</span>
+                <span className="text-[9px] font-bold text-red-500 opacity-0 group-hover:opacity-100 transition-opacity">View Simulation →</span>
               </div>
               <div className="flex items-center gap-3 mb-2">
                 <div className="text-2xl font-black tabular-nums" style={{ color: tip.bayes_probability_pct > 50 ? '#ef4444' : tip.bayes_probability_pct > 15 ? '#f97316' : '#22c55e' }}>
@@ -1111,7 +1129,7 @@ function TipDrawer({ tip, onClose, onStatusChange, onAnalyze }: { tip: Tip; onCl
               className="w-full py-3 rounded-lg text-[10px] font-bold uppercase tracking-widest transition-all hover:opacity-90 flex items-center justify-center gap-2"
               style={{ background: 'rgba(239,68,68,0.08)', color: '#f87171', border: '1px solid rgba(239,68,68,0.2)' }}
             >
-              🔬 Run Threat Analysis
+              Run Threat Analysis
             </button>
           )}
 
@@ -1312,8 +1330,13 @@ export default function Dashboard() {
                 setPipelineStep(PIPELINE_STEPS.length)
                 setOrbMode('critical'); setCriticalFlash(true)
                 if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
-                  const u = new SpeechSynthesisUtterance('Critical threat detected. Westbrook Academy. Alerting administrators now.')
-                  u.rate = 0.9; u.pitch = 0.82; u.volume = 1
+                  const u = new SpeechSynthesisUtterance(
+                    'Critical threat detected at Westbrook Academy. A student has been showing a weapon to peers. Escalating pattern over two weeks. Alerting school administrators now. Response required immediately.'
+                  )
+                  u.rate = 0.85; u.pitch = 0.95; u.volume = 1
+                  const voices = window.speechSynthesis.getVoices()
+                  const femaleVoice = voices.find(v => v.name.includes('Samantha') || v.name.includes('Karen') || v.name.includes('Moira') || v.name.includes('Victoria') || (v.lang === 'en-US' && v.name.toLowerCase().includes('female')))
+                  if (femaleVoice) u.voice = femaleVoice
                   window.speechSynthesis.speak(u)
                 }
                 const t3 = setTimeout(() => setCriticalFlash(false), 2500)
@@ -1487,17 +1510,17 @@ export default function Dashboard() {
           {/* Tab switcher */}
           <div className="flex items-center gap-0.5 p-0.5 rounded-lg" style={{ background: 'var(--surface-2)', border: '1px solid rgba(255,255,255,0.05)' }}>
             {([
-              { id: 'command',      label: 'Command Center',       icon: '⬡' },
-              { id: 'intelligence', label: 'Threat Intelligence',  icon: '◈' },
-              { id: 'pipeline',     label: 'Data Pipeline',        icon: '⬢' },
-            ] as { id: TabId; label: string; icon: string }[]).map(tab => (
+              { id: 'command',      label: 'Command Center',      icon: <IconGrid size={12} /> },
+              { id: 'intelligence', label: 'Threat Intelligence', icon: <IconEye  size={12} /> },
+              { id: 'pipeline',     label: 'Data Pipeline',       icon: <IconFlow size={12} /> },
+            ] as { id: TabId; label: string; icon: React.ReactNode }[]).map(tab => (
               <button key={tab.id} onClick={() => setActiveTab(tab.id)}
                 className={`flex items-center gap-1.5 px-3 py-1 rounded-md text-[10px] font-semibold tracking-wide transition-all duration-200 ${
                   activeTab === tab.id
                     ? 'bg-[var(--surface)] text-[var(--foreground)] shadow-sm border border-[var(--border)]'
                     : 'text-[var(--muted)] hover:text-[var(--foreground)]'
                 }`}>
-                <span className="text-[11px]">{tab.icon}</span>
+                <span className="flex items-center">{tab.icon}</span>
                 {tab.label}
               </button>
             ))}
@@ -1710,7 +1733,7 @@ export default function Dashboard() {
         {/* ── Tab: Threat Intelligence (3D graph) ── */}
         {activeTab === 'intelligence' && (
           <div className="relative z-10 flex-1 min-h-0 overflow-hidden">
-            <ThreatGraph tips={tips} />
+            <ThreatGraph tips={realTips} freshIds={freshIds} />
           </div>
         )}
 

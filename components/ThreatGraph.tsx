@@ -236,7 +236,7 @@ function NodePopup({ node, pos, onClose }: {
           {tip.cross_school_alert && (
             <div className="rounded-lg px-2.5 py-2 flex items-start gap-2"
               style={{ background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.2)' }}>
-              <span className="text-red-400 text-[10px]">⚠</span>
+              <span className="text-red-400 text-[10px] font-bold">!</span>
               <p className="text-[10px] text-red-300 leading-relaxed">{tip.cross_school_alert.slice(0, 120)}</p>
             </div>
           )}
@@ -305,14 +305,14 @@ function NodePopup({ node, pos, onClose }: {
           {/* ── Location / subject ── */}
           {(tip.location_detail || tip.subject_description) && (
             <div className="flex flex-col gap-0.5 text-[10px] text-slate-500">
-              {tip.location_detail && <span>📍 {tip.location_detail}</span>}
-              {tip.subject_description && <span>👤 {tip.subject_description.slice(0, 80)}</span>}
+              {tip.location_detail && <span>· {tip.location_detail}</span>}
+              {tip.subject_description && <span>· {tip.subject_description.slice(0, 80)}</span>}
             </div>
           )}
 
           {/* ── School ── */}
           {tip.school_name && (
-            <div className="text-[10px] text-slate-600">🏫 {tip.school_name}</div>
+            <div className="text-[10px] text-slate-600">· {tip.school_name}</div>
           )}
 
           {/* ── Recommended action ── */}
@@ -326,7 +326,7 @@ function NodePopup({ node, pos, onClose }: {
           {/* ── S3 archive ── */}
           {tip.s3_archive_uri && (
             <div className="text-[9px] text-slate-700 font-mono truncate">
-              ☁ {tip.s3_archive_uri}
+              {tip.s3_archive_uri}
             </div>
           )}
         </>}
@@ -337,9 +337,9 @@ function NodePopup({ node, pos, onClose }: {
 
 // ─── Main component ───────────────────────────────────────────────────────────
 
-interface Props { tips: Tip[] }
+interface Props { tips: Tip[]; freshIds?: Set<string> }
 
-export default function ThreatGraph({ tips }: Props) {
+export default function ThreatGraph({ tips, freshIds = new Set() }: Props) {
   const graphRef = useRef<any>(null)
   const [selected, setSelected] = useState<GraphNode | null>(null)
   const [popupPos, setPopupPos] = useState({ x: 0, y: 0 })
@@ -375,27 +375,31 @@ export default function ThreatGraph({ tips }: Props) {
         color = hex ? parseInt(hex.replace('#', ''), 16) : 0x64748b
       }
 
+      // Fresh/latest nodes are pink
+      const isFresh = freshIds.has(node.id)
+      if (isFresh) color = 0xec4899
+
       const mat = new THREE.MeshPhongMaterial({
         color, emissive: color, emissiveIntensity: 0.3,
         shininess: 90, transparent: true, opacity: 0.9,
       })
       group.add(new THREE.Mesh(geo, mat))
 
-      // Glow for schools, critical, and tips with cross-school alerts
+      // Glow for schools, critical, tips with cross-school alerts, and fresh nodes
       const hasCrossAlert = node.tip?.cross_school_alert
-      if (isSchool || node.urgency === 'critical' || hasCrossAlert) {
+      if (isSchool || node.urgency === 'critical' || hasCrossAlert || isFresh) {
         const canvas = document.createElement('canvas')
         canvas.width = canvas.height = 64
         const ctx = canvas.getContext('2d')!
         const grad = ctx.createRadialGradient(32, 32, 0, 32, 32, 32)
-        const glowColor = isSchool ? 'rgba(245,158,11,' : hasCrossAlert ? 'rgba(239,68,68,' : 'rgba(239,68,68,'
+        const glowColor = isFresh ? 'rgba(236,72,153,' : isSchool ? 'rgba(245,158,11,' : hasCrossAlert ? 'rgba(239,68,68,' : 'rgba(239,68,68,'
         grad.addColorStop(0, glowColor + '0.7)')
         grad.addColorStop(1, glowColor + '0)')
         ctx.fillStyle = grad
         ctx.fillRect(0, 0, 64, 64)
         const tex = new THREE.CanvasTexture(canvas)
         const sprite = new THREE.Sprite(new THREE.SpriteMaterial({ map: tex, transparent: true, blending: THREE.AdditiveBlending, depthWrite: false }))
-        const scale = isSchool ? Math.max(50, (node.count ?? 1) * 18) : hasCrossAlert ? 55 : 40
+        const scale = isFresh ? 45 : isSchool ? Math.max(50, (node.count ?? 1) * 18) : hasCrossAlert ? 55 : 40
         sprite.scale.setScalar(scale)
         group.add(sprite)
       }
@@ -416,7 +420,7 @@ export default function ThreatGraph({ tips }: Props) {
 
       return group
     }
-  }, [])
+  }, [freshIds])
 
   useEffect(() => {
     const scene = graphRef.current?.scene()
@@ -458,7 +462,10 @@ export default function ThreatGraph({ tips }: Props) {
 
       {isEmpty && (
         <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 pointer-events-none z-10">
-          <div className="text-3xl opacity-10">🕸️</div>
+          <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1" strokeLinecap="round" strokeLinejoin="round" className="text-slate-800">
+            <circle cx="12" cy="12" r="2" /><circle cx="4" cy="6" r="2" /><circle cx="20" cy="6" r="2" /><circle cx="4" cy="18" r="2" /><circle cx="20" cy="18" r="2" />
+            <line x1="6" y1="6" x2="10" y2="11" /><line x1="18" y1="6" x2="14" y2="11" /><line x1="6" y1="18" x2="10" y2="13" /><line x1="18" y1="18" x2="14" y2="13" />
+          </svg>
           <div className="text-xs text-slate-700">No tips yet — graph builds as calls come in</div>
           <div className="text-[10px] text-slate-800">Call +1 (240) 266-5263 to create a threat report</div>
         </div>
@@ -469,7 +476,8 @@ export default function ThreatGraph({ tips }: Props) {
         style={{ background: 'rgba(6,8,13,0.9)', border: '1px solid rgba(255,255,255,0.06)', backdropFilter: 'blur(12px)' }}>
         <div className="text-[9px] font-bold uppercase tracking-[0.2em] text-slate-600 mb-1">Graph Legend</div>
         {[
-          { color: '#f59e0b', label: 'School',          shape: '●' },
+          { color: '#ec4899', label: 'Latest Threat',    shape: '●' },
+          { color: '#f59e0b', label: 'School',           shape: '●' },
           { color: '#14b8a6', label: 'Category',         shape: '◆' },
           { color: '#ef4444', label: 'Critical Tip',     shape: '●' },
           { color: '#f97316', label: 'High Tip',         shape: '●' },
@@ -522,6 +530,13 @@ export default function ThreatGraph({ tips }: Props) {
           <div className="text-center">
             <div className="text-lg font-black text-green-400 tabular-nums">{consensusCount}</div>
             <div className="text-[9px] text-slate-600 uppercase tracking-wide">consensus</div>
+          </div>
+        </>}
+        {freshIds.size > 0 && <>
+          <div className="w-px bg-slate-800" />
+          <div className="text-center">
+            <div className="text-lg font-black tabular-nums" style={{ color: '#ec4899' }}>{freshIds.size}</div>
+            <div className="text-[9px] text-slate-600 uppercase tracking-wide">new</div>
           </div>
         </>}
       </div>
