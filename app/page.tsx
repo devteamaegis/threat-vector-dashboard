@@ -8,6 +8,7 @@ import type { OrbMode } from '@/components/ClaudiaOrb'
 const ClaudiaOrb          = dynamic(() => import('@/components/ClaudiaOrb'),          { ssr: false })
 const ThreatGraph         = dynamic(() => import('@/components/ThreatGraph'),         { ssr: false })
 const ThemeToggle         = dynamic(() => import('@/components/ThemeToggle'),         { ssr: false })
+const PipelineView        = dynamic(() => import('@/components/PipelineView'),        { ssr: false })
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
@@ -854,7 +855,7 @@ function LiveCounter() {
 
 // ─── Main Dashboard ────────────────────────────────────────────────────────────
 
-type TabId = 'command' | 'intelligence'
+type TabId = 'command' | 'intelligence' | 'pipeline'
 
 export default function Dashboard() {
   const [activeTab, setActiveTab] = useState<TabId>('command')
@@ -1115,6 +1116,7 @@ export default function Dashboard() {
             {([
               { id: 'command',      label: 'Command Center',       icon: '⬡' },
               { id: 'intelligence', label: 'Threat Intelligence',  icon: '◈' },
+              { id: 'pipeline',     label: 'Data Pipeline',        icon: '⬢' },
             ] as { id: TabId; label: string; icon: string }[]).map(tab => (
               <button key={tab.id} onClick={() => setActiveTab(tab.id)}
                 className={`flex items-center gap-1.5 px-3 py-1 rounded-md text-[10px] font-semibold tracking-wide transition-all duration-200 ${
@@ -1315,6 +1317,13 @@ export default function Dashboard() {
         {activeTab === 'intelligence' && (
           <div className="relative z-10 flex-1 min-h-0 overflow-hidden">
             <ThreatGraph tips={tips} />
+          </div>
+        )}
+
+        {/* ── Tab: Data Pipeline ── */}
+        {activeTab === 'pipeline' && (
+          <div className="relative z-10 flex-1 min-h-0 overflow-hidden">
+            <PipelineView />
           </div>
         )}
 
