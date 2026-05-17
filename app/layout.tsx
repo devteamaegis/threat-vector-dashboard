@@ -10,9 +10,22 @@ export const metadata: Metadata = {
   description: "Anonymous school threat reporting and intelligence dashboard",
 };
 
+// Injected before React hydrates — prevents flash of wrong theme
+const themeScript = `
+(function(){
+  try {
+    var t = localStorage.getItem('tv-theme');
+    if (t === 'dark') document.documentElement.setAttribute('data-theme','dark');
+  } catch(e){}
+})();
+`;
+
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en" className={`${geistSans.variable} ${geistMono.variable} h-full`}>
+      <head>
+        <script dangerouslySetInnerHTML={{ __html: themeScript }} />
+      </head>
       <body className="min-h-full flex flex-col antialiased">{children}</body>
     </html>
   );

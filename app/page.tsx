@@ -8,6 +8,7 @@ import type { OrbMode } from '@/components/ClaudiaOrb'
 const ClaudiaOrb          = dynamic(() => import('@/components/ClaudiaOrb'),          { ssr: false })
 const ThreatGraph         = dynamic(() => import('@/components/ThreatGraph'),         { ssr: false })
 const AgentEconomyTicker  = dynamic(() => import('@/components/AgentEconomyTicker'),  { ssr: false })
+const ThemeToggle         = dynamic(() => import('@/components/ThemeToggle'),         { ssr: false })
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
@@ -25,7 +26,7 @@ const STATUS_STYLE: Record<string, string> = {
   new:       'text-red-400 border-red-800/60 bg-red-950/40',
   reviewing: 'text-yellow-400 border-yellow-800/60 bg-yellow-950/40',
   resolved:  'text-green-400 border-green-800/60 bg-green-950/40',
-  dismissed: 'text-zinc-500 border-zinc-700/60 bg-zinc-50/40',
+  dismissed: 'text-zinc-500 border-zinc-700/60 bg-[var(--surface-2)]/40',
 }
 const EMOTION_COLOR: Record<string, string> = {
   calm:       'text-green-400',
@@ -180,7 +181,7 @@ function PipelineVisualizer({ activeStep, stepTimes, demoStartMs }: {
             <div key={step.id} className="flex items-center min-w-0">
               <div className={`flex flex-col items-center gap-1 px-2 py-2 rounded-lg transition-all duration-400 ${
                 active ? 'bg-cyan-950/70 border border-cyan-500/30' :
-                done   ? 'bg-zinc-50/60 border border-zinc-700/30' :
+                done   ? 'bg-[var(--surface-2)]/60 border border-zinc-700/30' :
                          'border border-transparent opacity-40'
               }`}>
                 <span className={`text-base transition-transform duration-300 ${active ? 'scale-110' : ''}`}>{step.icon}</span>
@@ -292,7 +293,7 @@ function PricingModal({ onClose }: { onClose: () => void }) {
     <div className="fixed inset-0 z-[200] flex items-center justify-center" onClick={onClose}>
       <div className="absolute inset-0 bg-black/70 backdrop-blur-sm" />
       <div className="relative z-10 rounded-2xl p-8 w-full max-w-sm"
-        style={{ background: '#ffffff', border: '1px solid #e4e4e7', boxShadow: '0 8px 40px rgba(0,0,0,0.12)' }}
+        style={{ background: 'var(--surface)', border: '1px solid var(--border)', boxShadow: '0 8px 40px rgba(0,0,0,0.12)' }}
         onClick={e => e.stopPropagation()}>
         <div className="text-[9px] font-bold uppercase tracking-[0.3em] text-zinc-400 mb-6">District Pricing</div>
         <div className="flex flex-col gap-3">
@@ -348,7 +349,7 @@ function IntegrationStatus() {
   }, [])
 
   return (
-    <div className="rounded-lg p-3" style={{ background: '#f5f5f5', border: '1px solid rgba(255,255,255,0.04)' }}>
+    <div className="rounded-lg p-3" style={{ background: 'var(--surface-2)', border: '1px solid rgba(255,255,255,0.04)' }}>
       <div className="text-[9px] font-bold uppercase tracking-[0.2em] text-zinc-400 mb-2">Integration Status</div>
       <div className="grid grid-cols-2 gap-x-3 gap-y-1.5">
         {integrations.map(item => {
@@ -376,7 +377,7 @@ function CostTracker() {
   ]
   const total = costs.reduce((s, c) => s + c.cost, 0)
   return (
-    <div className="rounded-lg p-3" style={{ background: '#f5f5f5', border: '1px solid rgba(255,255,255,0.04)' }}>
+    <div className="rounded-lg p-3" style={{ background: 'var(--surface-2)', border: '1px solid rgba(255,255,255,0.04)' }}>
       <div className="flex items-center justify-between mb-2">
         <span className="text-[9px] font-bold uppercase tracking-[0.2em] text-zinc-400">Cost Per Tip</span>
         <span className="text-[11px] font-black text-green-400 tabular-nums">${total.toFixed(4)}</span>
@@ -477,7 +478,7 @@ function DispatchBriefCard({ brief }: { brief: string }) {
 
 function TipRowSkeleton() {
   return (
-    <div className="w-full p-3 rounded-lg" style={{ background: '#ffffff', border: '1px solid #e4e4e7' }}>
+    <div className="w-full p-3 rounded-lg" style={{ background: 'var(--surface)', border: '1px solid var(--border)' }}>
       <div className="flex items-center justify-between gap-2 mb-2">
         <div className="flex items-center gap-2">
           <div className="w-4 h-4 rounded bg-zinc-100 animate-pulse" />
@@ -508,7 +509,7 @@ function KeyboardShortcutsModal({ onClose }: { onClose: () => void }) {
     <div className="fixed inset-0 z-[200] flex items-center justify-center" onClick={onClose}>
       <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" />
       <div className="relative z-10 rounded-xl p-6 w-full max-w-xs"
-        style={{ background: '#ffffff', border: '1px solid #e4e4e7', boxShadow: '0 8px 40px rgba(0,0,0,0.12)' }}
+        style={{ background: 'var(--surface)', border: '1px solid var(--border)', boxShadow: '0 8px 40px rgba(0,0,0,0.12)' }}
         onClick={e => e.stopPropagation()}>
         <div className="flex items-center justify-between mb-4">
           <div className="text-[10px] font-bold uppercase tracking-[0.2em] text-zinc-500">Keyboard Shortcuts</div>
@@ -533,7 +534,7 @@ function LiveCallOverlay({ call }: { call: { callId: string, transcript: string,
   return (
     <div className="fixed inset-0 z-[100] pointer-events-none flex flex-col items-end justify-start p-6">
       <div className="w-80 rounded-xl overflow-hidden shadow-2xl pointer-events-auto"
-        style={{ background: '#ffffff', border: '1px solid rgba(239,68,68,0.3)', boxShadow: '0 0 40px rgba(239,68,68,0.15)' }}>
+        style={{ background: 'var(--surface)', border: '1px solid rgba(239,68,68,0.3)', boxShadow: '0 0 40px rgba(239,68,68,0.15)' }}>
         {/* Header */}
         <div className="flex items-center gap-2 px-4 py-3" style={{ borderBottom: '1px solid rgba(239,68,68,0.15)', background: 'rgba(239,68,68,0.08)' }}>
           <span className="w-2 h-2 rounded-full bg-red-500 animate-pulse" />
@@ -576,11 +577,11 @@ function TipDrawer({ tip, onClose, onStatusChange }: { tip: Tip; onClose: () => 
     <div className="fixed inset-0 z-50 flex" onClick={onClose}>
       <div className="absolute inset-0 backdrop-blur-sm" style={{background: 'rgba(9,9,11,0.35)'}} />
       <div className="relative z-10 ml-auto h-full w-full max-w-md flex flex-col overflow-y-auto"
-        style={{ background: '#ffffff', borderLeft: '1px solid #e4e4e7' }}
+        style={{ background: 'var(--surface)', borderLeft: '1px solid var(--border)' }}
         onClick={e => e.stopPropagation()}>
         {/* Header */}
         <div className="flex items-center justify-between px-5 py-4 sticky top-0 z-10 border-b"
-          style={{ borderColor: '#ebebeb', background: '#ffffff' }}>
+          style={{ borderColor: 'var(--border)', background: 'var(--surface)' }}>
           <div className="flex items-center gap-2">
             <span>{icon}</span>
             <span className={`text-[9px] font-bold uppercase px-2 py-0.5 rounded ${URGENCY_BG[urgency]}`}>{tip.urgency}</span>
@@ -645,7 +646,7 @@ function TipDrawer({ tip, onClose, onStatusChange }: { tip: Tip; onClose: () => 
                 <p className="text-[10px] text-zinc-400 mt-2 italic">{tip.gemini_reasoning}</p>
               )}
               {tip.multilingual_call && tip.caller_language && (
-                <div className="mt-2 pt-2 border-t text-[10px] text-indigo-500" style={{ borderColor: '#ebebeb' }}>
+                <div className="mt-2 pt-2 border-t text-[10px] text-indigo-500" style={{ borderColor: 'var(--border)' }}>
                   🌐 Originally in {tip.caller_language} - auto-translated by Gemini Live
                 </div>
               )}
@@ -677,7 +678,7 @@ function TipDrawer({ tip, onClose, onStatusChange }: { tip: Tip; onClose: () => 
                 )}
               </div>
               {tip.call_duration_seconds && (
-                <div className="mt-3 pt-3 border-t text-xs text-zinc-400" style={{ borderColor: '#ebebeb' }}>
+                <div className="mt-3 pt-3 border-t text-xs text-zinc-400" style={{ borderColor: 'var(--border)' }}>
                   Call duration: <span className="text-zinc-600">{tip.call_duration_seconds}s</span>
                 </div>
               )}
@@ -767,7 +768,7 @@ function TipDrawer({ tip, onClose, onStatusChange }: { tip: Tip; onClose: () => 
 
           {/* Data grid */}
           <div className="rounded-lg p-4 grid grid-cols-2 gap-4 text-xs"
-            style={{ background: '#f5f5f5', border: '1px solid rgba(255,255,255,0.04)' }}>
+            style={{ background: 'var(--surface-2)', border: '1px solid rgba(255,255,255,0.04)' }}>
             {[
               ['Severity',  tip.severity ?? tip.urgency],
               ['Anonymous', tip.is_anonymous ? 'Yes' : 'No'],
@@ -1036,7 +1037,7 @@ export default function Dashboard() {
         @keyframes scanLine { 0%{transform:translateY(0)} 100%{transform:translateY(100%)} }
       `}</style>
 
-      <div className="fixed inset-0 flex flex-col overflow-hidden" style={{ background: '#f8f9fb', fontFamily: 'var(--font-geist-sans), system-ui, sans-serif' }}>
+      <div className="fixed inset-0 flex flex-col overflow-hidden" style={{ background: 'var(--background)', fontFamily: 'var(--font-geist-sans), system-ui, sans-serif' }}>
 
         {liveCall && <LiveCallOverlay call={liveCall} />}
 
@@ -1064,7 +1065,7 @@ export default function Dashboard() {
 
         {/* ── Header ── */}
         <header className="relative z-10 flex items-center justify-between px-5 h-12 shrink-0"
-          style={{ borderBottom: '1px solid #e4e4e7', background: 'rgba(248,249,251,0.96)', backdropFilter: 'blur(16px)' }}>
+          style={{ borderBottom: '1px solid var(--border)', background: 'var(--background)', backdropFilter: 'blur(16px)', opacity: 0.97 }}>
 
           {/* Left: brand + tabs */}
           <div className="flex items-center gap-5">
@@ -1077,7 +1078,7 @@ export default function Dashboard() {
             </div>
 
           {/* Tab switcher */}
-          <div className="flex items-center gap-0.5 p-0.5 rounded-lg" style={{ background: '#f5f5f5', border: '1px solid rgba(255,255,255,0.05)' }}>
+          <div className="flex items-center gap-0.5 p-0.5 rounded-lg" style={{ background: 'var(--surface-2)', border: '1px solid rgba(255,255,255,0.05)' }}>
             {([
               { id: 'command',      label: 'Command Center',       icon: '⬡' },
               { id: 'intelligence', label: 'Threat Intelligence',  icon: '◈' },
@@ -1085,8 +1086,8 @@ export default function Dashboard() {
               <button key={tab.id} onClick={() => setActiveTab(tab.id)}
                 className={`flex items-center gap-1.5 px-3 py-1 rounded-md text-[10px] font-semibold tracking-wide transition-all duration-200 ${
                   activeTab === tab.id
-                    ? 'bg-white text-zinc-900 shadow-sm border border-zinc-200'
-                    : 'text-zinc-400 hover:text-zinc-600'
+                    ? 'bg-[var(--surface)] text-[var(--foreground)] shadow-sm border border-[var(--border)]'
+                    : 'text-[var(--muted)] hover:text-[var(--foreground)]'
                 }`}>
                 <span className="text-[11px]">{tab.icon}</span>
                 {tab.label}
@@ -1097,7 +1098,8 @@ export default function Dashboard() {
 
         {/* Right: actions */}
         <div className="flex items-center gap-2.5">
-          <button onClick={() => setShowShortcuts(true)} className="w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-bold text-zinc-400 border border-zinc-200 hover:text-zinc-600 hover:bg-zinc-50 transition-colors">?</button>
+          <ThemeToggle />
+          <button onClick={() => setShowShortcuts(true)} className="w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-bold text-[var(--muted)] border border-[var(--border)] hover:text-[var(--foreground)] hover:bg-[var(--surface-2)] transition-colors">?</button>
           <LiveCounter />
             <button onClick={runDemo} disabled={demoRunning}
               className={`flex items-center gap-1.5 text-[10px] font-semibold uppercase px-3 py-1.5 rounded-md border transition-all tracking-widest ${
@@ -1140,7 +1142,7 @@ export default function Dashboard() {
 
             {/* Left panel */}
             <div className="hidden lg:flex flex-col justify-between py-6 px-5 w-48 shrink-0"
-              style={{ borderRight: '1px solid #e4e4e7' }}>
+              style={{ borderRight: '1px solid var(--border)' }}>
               <div className="flex flex-col gap-5">
                 <div className="flex items-center justify-between">
                   <div className="text-[9px] font-semibold uppercase tracking-[0.2em] text-zinc-400">Overview</div>
@@ -1198,7 +1200,7 @@ export default function Dashboard() {
               {/* Live transcript */}
               {demoRunning && (
                 <div className="w-full max-w-lg rounded-lg px-4 py-3"
-                  style={{ background: '#ffffff', border: '1px solid rgba(6,182,212,0.25)', boxShadow: '0 2px 12px rgba(0,0,0,0.06)' }}>
+                  style={{ background: 'var(--surface)', border: '1px solid rgba(6,182,212,0.25)', boxShadow: '0 2px 12px rgba(0,0,0,0.06)' }}>
                   <div className="flex items-center gap-2 mb-2">
                     <span className="w-1.5 h-1.5 rounded-full bg-red-500 animate-pulse" />
                     <span className="text-[8px] font-bold uppercase tracking-[0.25em] text-zinc-400">Live Transcript</span>
@@ -1215,7 +1217,7 @@ export default function Dashboard() {
               {/* Pipeline */}
               {demoRunning && pipelineStep >= 0 && (
                 <div className="w-full max-w-2xl rounded-lg px-4 py-3"
-                  style={{ background: '#ffffff', border: '1px solid #e4e4e7', boxShadow: '0 2px 8px rgba(0,0,0,0.04)' }}>
+                  style={{ background: 'var(--surface)', border: '1px solid var(--border)', boxShadow: '0 2px 8px rgba(0,0,0,0.04)' }}>
                   <div className="text-[8px] font-bold uppercase tracking-[0.25em] text-zinc-400 mb-3">Processing Pipeline</div>
                   <PipelineVisualizer
                     activeStep={pipelineStep < PIPELINE_STEPS.length ? pipelineStep : PIPELINE_STEPS.length}
@@ -1228,8 +1230,8 @@ export default function Dashboard() {
 
             {/* Right: live feed */}
             <div className="flex flex-col w-80 xl:w-88 shrink-0 border-l min-h-0"
-              style={{ borderColor: '#e4e4e7', background: '#fafafa' }}>
-              <div className="px-4 pt-4 pb-3 shrink-0 border-b" style={{ borderColor: '#f0f0f0' }}>
+              style={{ borderColor: 'var(--border)', background: 'var(--surface-2)' }}>
+              <div className="px-4 pt-4 pb-3 shrink-0 border-b" style={{ borderColor: 'var(--border)' }}>
                 <div className="flex items-center justify-between mb-3">
                   <span className="text-[9px] font-bold uppercase tracking-[0.2em] text-zinc-400">Live Feed</span>
                   <span className="text-[10px] text-zinc-400 font-mono tabular-nums">{filtered.length}</span>
@@ -1278,13 +1280,13 @@ export default function Dashboard() {
         )}
 
         {/* Agent Economy ticker — Sponge micropayments */}
-        <div className="relative z-10 shrink-0 px-4 py-2" style={{ borderTop: '1px solid #e4e4e7' }}>
+        <div className="relative z-10 shrink-0 px-4 py-2" style={{ borderTop: '1px solid var(--border)' }}>
           <AgentEconomyTicker />
         </div>
 
         {/* Sponsor ticker */}
         <div className="relative z-10 shrink-0 overflow-hidden"
-          style={{ borderTop: '1px solid #e4e4e7', background: '#f8f9fb', height: 32 }}>
+          style={{ borderTop: '1px solid var(--border)', background: 'var(--background)', height: 32 }}>
           <div className="flex items-center h-full" style={{ animation: 'ticker 35s linear infinite', width: 'max-content' }}>
             {[...SPONSORS, ...SPONSORS].map((s, i) => (
               <div key={i} className="flex items-center gap-1.5 px-6 h-full border-r shrink-0"

@@ -46,7 +46,7 @@ export default function AgentEconomyTicker() {
   return (
     <div
       className="flex items-center gap-3 px-3 py-2 rounded-lg border text-xs"
-      style={{ background: '#f0fdf4', borderColor: '#86efac' }}
+      style={{ background: 'rgba(16,185,129,0.07)', borderColor: 'rgba(134,239,172,0.35)' }}
       title="Autonomous agent micropayments powered by Sponge"
     >
       {/* Sponge logo / label */}
