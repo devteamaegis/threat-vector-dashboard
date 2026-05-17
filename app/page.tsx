@@ -5,8 +5,9 @@ import { useEffect, useRef, useState, useCallback } from 'react'
 import { supabase, type Tip } from '@/lib/supabase'
 import type { OrbMode } from '@/components/ClaudiaOrb'
 
-const ClaudiaOrb   = dynamic(() => import('@/components/ClaudiaOrb'),   { ssr: false })
-const ThreatGraph  = dynamic(() => import('@/components/ThreatGraph'),  { ssr: false })
+const ClaudiaOrb          = dynamic(() => import('@/components/ClaudiaOrb'),          { ssr: false })
+const ThreatGraph         = dynamic(() => import('@/components/ThreatGraph'),         { ssr: false })
+const AgentEconomyTicker  = dynamic(() => import('@/components/AgentEconomyTicker'),  { ssr: false })
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
@@ -1274,6 +1275,11 @@ export default function Dashboard() {
             <ThreatGraph tips={tips} />
           </div>
         )}
+
+        {/* Agent Economy ticker — Sponge micropayments */}
+        <div className="relative z-10 shrink-0 px-4 py-2" style={{ borderTop: '1px solid #e4e4e7' }}>
+          <AgentEconomyTicker />
+        </div>
 
         {/* Sponsor ticker */}
         <div className="relative z-10 shrink-0 overflow-hidden"
