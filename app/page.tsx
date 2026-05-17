@@ -663,40 +663,183 @@ function SubmitTipModal({ onClose }: { onClose: () => void }) {
   )
 }
 
+// ── Threat keyword sets for word-level highlighting ──────────────────────────
+const THREAT_WORDS = new Set([
+  'gun','guns','weapon','weapons','knife','knives','bomb','bombs','shoot','shooting','shot',
+  'kill','killing','killed','hurt','harm','harming','attack','attacking','attacked',
+  'threat','threatening','threatened','violence','violent','die','dead','death',
+  'fight','fighting','hurt','destroy','explode','explosion','blood',
+])
+const URGENT_WORDS = new Set([
+  'tomorrow','today','tonight','now','soon','immediately','urgent','quickly','right now',
+  'planning','plan','going to','will','about to','next week','morning','tonight',
+])
+const FEAR_WORDS = new Set([
+  'scared','terrified','afraid','fear','worried','nervous','panic','please','help',
+  'dangerous','serious','warning','everyone','kids','students','people',
+])
+
+function classifyWord(w: string): 'threat' | 'urgent' | 'fear' | 'neutral' {
+  const lower = w.toLowerCase().replace(/[^a-z]/g, '')
+  if (THREAT_WORDS.has(lower)) return 'threat'
+  if (URGENT_WORDS.has(lower)) return 'urgent'
+  if (FEAR_WORDS.has(lower)) return 'fear'
+  return 'neutral'
+}
+
+function inferTone(transcript: string, features: string[]): { label: string; color: string; emoji: string } {
+  const t = transcript.toLowerCase()
+  const hasThreat = [...THREAT_WORDS].some(w => t.includes(w))
+  const hasFear   = [...FEAR_WORDS].some(w => t.includes(w))
+  const hasUrgent = [...URGENT_WORDS].some(w => t.includes(w))
+  if (hasThreat && hasUrgent) return { label: 'Threatening · Urgent', color: '#ef4444', emoji: '🚨' }
+  if (hasThreat)               return { label: 'Threatening',          color: '#ef4444', emoji: '⚠️' }
+  if (hasFear && hasUrgent)    return { label: 'Distressed · Urgent',  color: '#f97316', emoji: '😨' }
+  if (hasFear)                 return { label: 'Distressed',           color: '#f97316', emoji: '😟' }
+  if (hasUrgent)               return { label: 'Urgent',               color: '#f59e0b', emoji: '⏱' }
+  return                              { label: 'Calm · Reporting',     color: '#22c55e', emoji: '📞' }
+}
+
 function LiveCallOverlay({ call }: { call: { callId: string, transcript: string, probability: number, threatLevel: number, school: string, features: string[] } }) {
   const pct = Math.min(call.probability, 100)
-  const barColor = pct > 50 ? '#ef4444' : pct > 15 ? '#f97316' : '#22c55e'
+  const barColor = pct >= 70 ? '#ef4444' : pct >= 35 ? '#f97316' : pct >= 10 ? '#f59e0b' : '#22c55e'
+  const tone = inferTone(call.transcript, call.features)
+  const words = call.transcript.split(' ').filter(Boolean)
+
+  // Count word types for the breakdown bar
+  const counts = words.reduce((acc, w) => {
+    acc[classifyWord(w)]++; return acc
+  }, { threat: 0, urgent: 0, fear: 0, neutral: 0 } as Record<string, number>)
+
   return (
-    <div className="fixed inset-0 z-[100] pointer-events-none flex flex-col items-end justify-start p-6">
-      <div className="w-80 rounded-xl overflow-hidden shadow-2xl pointer-events-auto"
-        style={{ background: 'var(--surface)', border: '1px solid rgba(239,68,68,0.3)', boxShadow: '0 0 40px rgba(239,68,68,0.15)' }}>
-        {/* Header */}
-        <div className="flex items-center gap-2 px-4 py-3" style={{ borderBottom: '1px solid rgba(239,68,68,0.15)', background: 'rgba(239,68,68,0.08)' }}>
-          <span className="w-2 h-2 rounded-full bg-red-500 animate-pulse" />
-          <span className="text-[10px] font-bold uppercase tracking-widest text-red-400">Live Call Active</span>
-          <span className="ml-auto text-[9px] text-zinc-400 truncate max-w-[120px]">{call.school}</span>
+    <div className="fixed inset-0 z-[100] pointer-events-none flex items-center justify-center">
+      {/* Dim backdrop */}
+      <div className="absolute inset-0 bg-black/30 backdrop-blur-[2px]" />
+
+      <div className="relative pointer-events-auto w-full max-w-2xl mx-4 rounded-2xl overflow-hidden shadow-2xl"
+        style={{
+          background: 'rgba(6,8,13,0.97)',
+          border: `1px solid ${barColor}40`,
+          boxShadow: `0 0 80px ${barColor}25, 0 0 0 1px ${barColor}15`,
+        }}>
+
+        {/* ── Header ──────────────────────────────────────────────────── */}
+        <div className="flex items-center gap-3 px-6 py-4"
+          style={{ borderBottom: `1px solid ${barColor}20`, background: `${barColor}10` }}>
+          <span className="w-2.5 h-2.5 rounded-full bg-red-500 animate-pulse shrink-0" />
+          <span className="text-[11px] font-black uppercase tracking-[0.25em] text-red-400">Live Call Active</span>
+          <span className="ml-auto text-[10px] text-zinc-400 font-mono">{call.school}</span>
         </div>
-        {/* Probability bar */}
-        <div className="px-4 py-3">
-          <div className="flex items-center justify-between mb-1.5">
-            <span className="text-[9px] uppercase tracking-widest text-zinc-400">Threat Probability</span>
-            <span className="text-sm font-black tabular-nums" style={{ color: barColor }}>{pct.toFixed(1)}%</span>
+
+        <div className="grid grid-cols-2 gap-0">
+
+          {/* ── Left: transcript with highlighted words ──────────────── */}
+          <div className="px-6 py-5" style={{ borderRight: `1px solid rgba(255,255,255,0.06)` }}>
+            <div className="text-[9px] font-bold uppercase tracking-[0.2em] text-zinc-500 mb-3">Transcript</div>
+            <div className="text-[12px] leading-7 font-medium flex flex-wrap gap-x-1.5 gap-y-0.5">
+              {words.map((word, i) => {
+                const type = classifyWord(word)
+                const style =
+                  type === 'threat'  ? { color: '#ef4444', background: 'rgba(239,68,68,0.15)',  borderRadius: 4, padding: '1px 4px', fontWeight: 700 } :
+                  type === 'urgent'  ? { color: '#f59e0b', background: 'rgba(245,158,11,0.12)', borderRadius: 4, padding: '1px 4px', fontWeight: 600 } :
+                  type === 'fear'    ? { color: '#f97316', background: 'rgba(249,115,22,0.10)', borderRadius: 4, padding: '1px 4px' } :
+                  { color: '#a1a1aa' }
+                return <span key={i} style={style}>{word}</span>
+              })}
+              <span className="inline-block w-0.5 h-4 bg-cyan-400 animate-pulse align-middle ml-0.5" />
+            </div>
+
+            {/* Word type legend */}
+            <div className="flex items-center gap-4 mt-4 pt-3" style={{ borderTop: '1px solid rgba(255,255,255,0.06)' }}>
+              {[
+                { label: 'Threat', color: '#ef4444' },
+                { label: 'Urgent', color: '#f59e0b' },
+                { label: 'Fear',   color: '#f97316' },
+              ].map(l => (
+                <span key={l.label} className="flex items-center gap-1 text-[9px]">
+                  <span className="w-2 h-2 rounded-sm" style={{ background: l.color, opacity: 0.7 }} />
+                  <span style={{ color: l.color }}>{l.label}</span>
+                </span>
+              ))}
+            </div>
           </div>
-          <div className="w-full h-2 rounded-full bg-zinc-100 overflow-hidden">
-            <div className="h-full rounded-full transition-all duration-700"
-              style={{ width: `${pct}%`, background: `linear-gradient(90deg, #22c55e, ${barColor})` }} />
-          </div>
-          <div className="flex justify-between mt-1">
-            <span className="text-[8px] text-zinc-400">Level {call.threatLevel}/5</span>
+
+          {/* ── Right: analysis panel ────────────────────────────────── */}
+          <div className="px-6 py-5 flex flex-col gap-4">
+
+            {/* Threat probability */}
+            <div>
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-[9px] font-bold uppercase tracking-[0.2em] text-zinc-500">Threat Probability</span>
+                <span className="text-xl font-black tabular-nums" style={{ color: barColor }}>{pct.toFixed(1)}%</span>
+              </div>
+              <div className="w-full h-3 rounded-full overflow-hidden" style={{ background: 'rgba(255,255,255,0.06)' }}>
+                <div className="h-full rounded-full transition-all duration-700"
+                  style={{ width: `${pct}%`, background: `linear-gradient(90deg, #22c55e, ${barColor})` }} />
+              </div>
+              <div className="flex justify-between mt-1">
+                <span className="text-[9px] text-zinc-500">Level {call.threatLevel}/5</span>
+                <span className="text-[9px] text-zinc-500">Bayesian Monte Carlo</span>
+              </div>
+            </div>
+
+            {/* Tone reading */}
+            <div className="rounded-xl px-4 py-3" style={{ background: `${tone.color}12`, border: `1px solid ${tone.color}25` }}>
+              <div className="text-[9px] font-bold uppercase tracking-[0.2em] text-zinc-500 mb-1.5">Caller Tone</div>
+              <div className="flex items-center gap-2">
+                <span className="text-xl">{tone.emoji}</span>
+                <span className="text-sm font-bold" style={{ color: tone.color }}>{tone.label}</span>
+              </div>
+            </div>
+
+            {/* Word signal breakdown */}
+            <div>
+              <div className="text-[9px] font-bold uppercase tracking-[0.2em] text-zinc-500 mb-2">Signal Breakdown</div>
+              <div className="space-y-1.5">
+                {[
+                  { key: 'threat', label: 'Threat words',  color: '#ef4444' },
+                  { key: 'urgent', label: 'Urgency words', color: '#f59e0b' },
+                  { key: 'fear',   label: 'Fear markers',  color: '#f97316' },
+                ].map(({ key, label, color }) => {
+                  const n = counts[key] || 0
+                  const total = words.length || 1
+                  return (
+                    <div key={key} className="flex items-center gap-2">
+                      <span className="text-[9px] w-24 shrink-0" style={{ color }}>{label}</span>
+                      <div className="flex-1 h-1.5 rounded-full overflow-hidden" style={{ background: 'rgba(255,255,255,0.06)' }}>
+                        <div className="h-full rounded-full transition-all duration-700"
+                          style={{ width: `${Math.min(100, (n / total) * 100 * 6)}%`, background: color }} />
+                      </div>
+                      <span className="text-[9px] text-zinc-500 tabular-nums w-4 text-right">{n}</span>
+                    </div>
+                  )
+                })}
+              </div>
+            </div>
+
+            {/* Trigger keywords */}
             {call.features.length > 0 && (
-              <span className="text-[8px] text-zinc-400">triggers: {call.features.slice(0,2).join(', ')}</span>
+              <div>
+                <div className="text-[9px] font-bold uppercase tracking-[0.2em] text-zinc-500 mb-2">Key Triggers</div>
+                <div className="flex flex-wrap gap-1.5">
+                  {call.features.map((f, i) => (
+                    <span key={i} className="text-[10px] font-semibold px-2 py-0.5 rounded-full"
+                      style={{ background: 'rgba(239,68,68,0.15)', color: '#ef4444', border: '1px solid rgba(239,68,68,0.25)' }}>
+                      {f}
+                    </span>
+                  ))}
+                </div>
+              </div>
             )}
           </div>
         </div>
-        {/* Transcript */}
-        <div className="px-4 pb-4">
-          <div className="text-[9px] text-zinc-400 mb-1 uppercase tracking-widest">Transcript</div>
-          <p className="text-[10px] text-zinc-600 leading-relaxed line-clamp-4">{call.transcript}<span className="animate-pulse">▋</span></p>
+
+        {/* ── Footer ──────────────────────────────────────────────────── */}
+        <div className="px-6 py-3 flex items-center gap-2"
+          style={{ borderTop: `1px solid rgba(255,255,255,0.05)`, background: 'rgba(255,255,255,0.02)' }}>
+          <span className="text-[9px] text-zinc-600 font-mono">ID: {call.callId.slice(0,16)}</span>
+          <span className="ml-auto text-[9px] text-zinc-600 uppercase tracking-wider">Processing pipeline…</span>
+          <span className="w-1.5 h-1.5 rounded-full bg-cyan-500 animate-pulse" />
         </div>
       </div>
     </div>
