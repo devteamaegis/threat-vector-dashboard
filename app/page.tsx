@@ -727,7 +727,7 @@ function inferTone(transcript: string, features: string[]): { label: string; col
   return                              { label: 'Calm · Reporting',     color: '#22c55e', emoji: '📞' }
 }
 
-function LiveCallOverlay({ call }: { call: { callId: string, transcript: string, probability: number, threatLevel: number, school: string, features: string[] } }) {
+function LiveCallOverlay({ call, onDismiss }: { call: { callId: string, transcript: string, probability: number, threatLevel: number, school: string, features: string[] }; onDismiss?: () => void }) {
   const pct = Math.min(call.probability, 100)
   const barColor = pct >= 70 ? '#ef4444' : pct >= 35 ? '#f97316' : pct >= 10 ? '#f59e0b' : '#22c55e'
   const tone = inferTone(call.transcript, call.features)
@@ -755,7 +755,11 @@ function LiveCallOverlay({ call }: { call: { callId: string, transcript: string,
           style={{ borderBottom: `1px solid ${barColor}20`, background: `${barColor}10` }}>
           <span className="w-2.5 h-2.5 rounded-full bg-red-500 animate-pulse shrink-0" />
           <span className="text-[11px] font-black uppercase tracking-[0.25em] text-red-400">Live Call Active</span>
-          <span className="ml-auto text-[10px] text-zinc-400 font-mono">{call.school}</span>
+          <span className="text-[10px] text-zinc-400 font-mono ml-4">{call.school}</span>
+          <button onClick={onDismiss}
+            className="ml-auto text-zinc-600 hover:text-zinc-300 transition-colors w-7 h-7 flex items-center justify-center rounded-full hover:bg-white/5 text-base shrink-0">
+            ✕
+          </button>
         </div>
 
         <div className="grid grid-cols-2 gap-0">
@@ -1269,9 +1273,11 @@ export default function Dashboard() {
         const d = payload.new as any
         if (d.status === 'active') {
           setLiveCall({ callId: d.call_id, transcript: d.words_so_far, probability: d.probability_pct, threatLevel: d.threat_level, school: d.school_name || 'Unknown School', features: d.top_features || [] })
-          setOrbMode('speaking')
+          setOrbMode(d.threat_level >= 4 ? 'critical' : 'speaking')
         } else if (d.status === 'complete') {
-          setTimeout(() => { setLiveCall(null); setOrbMode('idle') }, 3000)
+          // Keep overlay visible for 20s on high/critical, 8s on lower threats
+          const dismissDelay = (d.threat_level ?? 1) >= 4 ? 20000 : 8000
+          setTimeout(() => { setLiveCall(null); setOrbMode('idle') }, dismissDelay)
         }
       })
       .subscribe()
@@ -1444,7 +1450,7 @@ export default function Dashboard() {
 
       <div className="fixed inset-0 flex flex-col overflow-hidden" style={{ background: 'var(--background)', fontFamily: 'var(--font-roboto-slab), "Roboto Slab", Georgia, serif' }}>
 
-        {liveCall && <LiveCallOverlay call={liveCall} />}
+        {liveCall && <LiveCallOverlay call={liveCall} onDismiss={() => { setLiveCall(null); setOrbMode('idle') }} />}
         {analysisTip && (
           <ThreatBreakdownModal
             transcript={analysisTip.description ?? ''}
