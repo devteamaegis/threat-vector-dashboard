@@ -14,7 +14,7 @@ const URGENCY_BG: Record<string, string> = {
   critical: 'bg-red-600/90 text-white',
   high:     'bg-orange-500/90 text-white',
   medium:   'bg-yellow-500/90 text-black',
-  low:      'bg-slate-600/80 text-slate-200',
+  low:      'bg-slate-600/80 text-zinc-900',
 }
 const CATEGORY_ICON: Record<string, string> = {
   weapon:'🔫', bullying:'👊', drugs:'💊', threat:'⚠️',
@@ -24,14 +24,14 @@ const STATUS_STYLE: Record<string, string> = {
   new:       'text-red-400 border-red-800/60 bg-red-950/40',
   reviewing: 'text-yellow-400 border-yellow-800/60 bg-yellow-950/40',
   resolved:  'text-green-400 border-green-800/60 bg-green-950/40',
-  dismissed: 'text-slate-500 border-slate-700/60 bg-slate-900/40',
+  dismissed: 'text-zinc-500 border-zinc-700/60 bg-zinc-50/40',
 }
 const EMOTION_COLOR: Record<string, string> = {
   calm:       'text-green-400',
   anxious:    'text-yellow-400',
   panicked:   'text-orange-400',
   distressed: 'text-red-400',
-  detached:   'text-slate-400',
+  detached:   'text-zinc-600',
 }
 const ESCALATION_COLOR: Record<string, string> = {
   stable:     'text-green-400',
@@ -136,10 +136,10 @@ function ScoreBar({ score }: { score: number | null | undefined }) {
   const col = pct >= 80 ? 'bg-red-500' : pct >= 60 ? 'bg-orange-500' : pct >= 40 ? 'bg-yellow-500' : 'bg-slate-700'
   return (
     <div className="flex items-center gap-2">
-      <div className="flex-1 h-1 rounded-full bg-slate-800 overflow-hidden">
+      <div className="flex-1 h-1 rounded-full bg-zinc-100 overflow-hidden">
         <div className={`h-full ${col} transition-all duration-700`} style={{ width: `${pct}%` }} />
       </div>
-      <span className="text-[10px] font-mono text-slate-500 tabular-nums">{val}/10</span>
+      <span className="text-[10px] font-mono text-zinc-500 tabular-nums">{val}/10</span>
     </div>
   )
 }
@@ -179,12 +179,12 @@ function PipelineVisualizer({ activeStep, stepTimes, demoStartMs }: {
             <div key={step.id} className="flex items-center min-w-0">
               <div className={`flex flex-col items-center gap-1 px-2 py-2 rounded-lg transition-all duration-400 ${
                 active ? 'bg-cyan-950/70 border border-cyan-500/30' :
-                done   ? 'bg-slate-900/60 border border-slate-700/30' :
+                done   ? 'bg-zinc-50/60 border border-zinc-700/30' :
                          'border border-transparent opacity-40'
               }`}>
                 <span className={`text-base transition-transform duration-300 ${active ? 'scale-110' : ''}`}>{step.icon}</span>
                 <span className={`text-[9px] font-semibold uppercase tracking-wide ${
-                  active ? 'text-cyan-400' : done ? 'text-slate-400' : 'text-slate-700'
+                  active ? 'text-cyan-400' : done ? 'text-zinc-600' : 'text-zinc-400'
                 }`}>{step.label}</span>
                 {done && stepTimes[i] !== undefined && (
                   <span className="text-[8px] font-mono text-green-500">{fmtMs(stepTimes[i])}</span>
@@ -199,7 +199,7 @@ function PipelineVisualizer({ activeStep, stepTimes, demoStartMs }: {
                 )}
               </div>
               {i < PIPELINE_STEPS.length - 1 && (
-                <div className={`w-2 h-px flex-shrink-0 transition-colors duration-400 ${done ? 'bg-slate-600' : 'bg-slate-800'}`} />
+                <div className={`w-2 h-px flex-shrink-0 transition-colors duration-400 ${done ? 'bg-slate-600' : 'bg-zinc-100'}`} />
               )}
             </div>
           )
@@ -234,14 +234,14 @@ function IphoneNotif({ show, onDismiss }: { show: boolean; onDismiss: () => void
         <div className="flex-1 min-w-0">
           <div className="flex items-center justify-between">
             <span className="text-[11px] font-semibold text-white">Threat Vector</span>
-            <span className="text-[9px] text-slate-500">now</span>
+            <span className="text-[9px] text-zinc-500">now</span>
           </div>
-          <div className="text-[10px] text-slate-400">Safety Alert — Westbrook Academy</div>
+          <div className="text-[10px] text-zinc-600">Safety Alert — Westbrook Academy</div>
         </div>
       </div>
       <div className="px-4 pb-4">
-        <p className="text-[11px] text-slate-300 leading-relaxed whitespace-pre-line">{DEMO_SMS}</p>
-        <div className="mt-2 text-[9px] text-slate-600">tap to dismiss</div>
+        <p className="text-[11px] text-zinc-800 leading-relaxed whitespace-pre-line">{DEMO_SMS}</p>
+        <div className="mt-2 text-[9px] text-zinc-400">tap to dismiss</div>
       </div>
     </div>
   )
@@ -260,27 +260,27 @@ function ImpactCard({ show, onDismiss }: { show: boolean; onDismiss: () => void 
           boxShadow: '0 0 100px rgba(239,68,68,0.12), 0 0 0 1px rgba(239,68,68,0.08)',
         }}
         onClick={onDismiss}>
-        <div className="text-[9px] font-bold uppercase tracking-[0.3em] text-slate-600">Threat Triaged</div>
+        <div className="text-[9px] font-bold uppercase tracking-[0.3em] text-zinc-400">Threat Triaged</div>
         <div className="flex items-center gap-10">
           <div className="flex flex-col items-center gap-1.5">
-            <div className="text-[9px] uppercase tracking-widest text-slate-600">Traditional Process</div>
-            <div className="text-5xl font-black text-slate-600 tabular-nums leading-none">45m</div>
-            <div className="text-[9px] text-slate-700">avg response time</div>
-            <div className="text-[9px] text-slate-800">phone tag, email chains</div>
+            <div className="text-[9px] uppercase tracking-widest text-zinc-400">Traditional Process</div>
+            <div className="text-5xl font-black text-zinc-400 tabular-nums leading-none">45m</div>
+            <div className="text-[9px] text-zinc-400">avg response time</div>
+            <div className="text-[9px] text-zinc-800">phone tag, email chains</div>
           </div>
           <div className="flex flex-col items-center gap-2">
-            <div className="w-px h-8 bg-slate-800" />
-            <span className="text-slate-700 text-sm font-light">→</span>
-            <div className="w-px h-8 bg-slate-800" />
+            <div className="w-px h-8 bg-zinc-100" />
+            <span className="text-zinc-400 text-sm font-light">→</span>
+            <div className="w-px h-8 bg-zinc-100" />
           </div>
           <div className="flex flex-col items-center gap-1.5">
             <div className="text-[9px] uppercase tracking-widest text-cyan-600">Threat Vector</div>
             <div className="text-5xl font-black text-red-400 tabular-nums leading-none">8.2s</div>
             <div className="text-[9px] text-cyan-500">AI-triaged · principal notified</div>
-            <div className="text-[9px] text-slate-600">SMS + email + logged</div>
+            <div className="text-[9px] text-zinc-400">SMS + email + logged</div>
           </div>
         </div>
-        <div className="text-[9px] text-slate-700">tap to dismiss</div>
+        <div className="text-[9px] text-zinc-400">tap to dismiss</div>
       </div>
     </div>
   )
@@ -291,26 +291,26 @@ function PricingModal({ onClose }: { onClose: () => void }) {
     <div className="fixed inset-0 z-[200] flex items-center justify-center" onClick={onClose}>
       <div className="absolute inset-0 bg-black/70 backdrop-blur-sm" />
       <div className="relative z-10 rounded-2xl p-8 w-full max-w-sm"
-        style={{ background: 'rgba(8,9,14,0.99)', border: '1px solid rgba(255,255,255,0.08)' }}
+        style={{ background: '#ffffff', border: '1px solid #e4e4e7', boxShadow: '0 8px 40px rgba(0,0,0,0.12)' }}
         onClick={e => e.stopPropagation()}>
-        <div className="text-[9px] font-bold uppercase tracking-[0.3em] text-slate-600 mb-6">District Pricing</div>
+        <div className="text-[9px] font-bold uppercase tracking-[0.3em] text-zinc-400 mb-6">District Pricing</div>
         <div className="flex flex-col gap-3">
           {[
             { tier: 'Starter',  price: '$199/mo', schools: '1-5 schools',  tips: '500 tips/mo' },
             { tier: 'District', price: '$499/mo', schools: '6-20 schools', tips: 'Unlimited tips', highlight: true },
             { tier: 'State',    price: 'Custom',  schools: '20+ schools',  tips: 'White-label + API' },
           ].map(p => (
-            <div key={p.tier} className={`rounded-lg p-4 ${p.highlight ? 'border border-cyan-500/30 bg-cyan-950/20' : 'border border-slate-800'}`}>
+            <div key={p.tier} className={`rounded-lg p-4 ${p.highlight ? 'border border-cyan-500/30 bg-cyan-950/20' : 'border border-zinc-800'}`}>
               <div className="flex items-center justify-between mb-1">
-                <span className={`text-sm font-bold ${p.highlight ? 'text-cyan-400' : 'text-slate-300'}`}>{p.tier}</span>
-                <span className={`text-sm font-black tabular-nums ${p.highlight ? 'text-white' : 'text-slate-400'}`}>{p.price}</span>
+                <span className={`text-sm font-bold ${p.highlight ? 'text-cyan-400' : 'text-zinc-800'}`}>{p.tier}</span>
+                <span className={`text-sm font-black tabular-nums ${p.highlight ? 'text-white' : 'text-zinc-600'}`}>{p.price}</span>
               </div>
-              <div className="text-[10px] text-slate-600">{p.schools} · {p.tips}</div>
+              <div className="text-[10px] text-zinc-400">{p.schools} · {p.tips}</div>
             </div>
           ))}
         </div>
-        <div className="mt-4 text-[9px] text-slate-700 text-center">Powered by Stripe · Per-tip billing available</div>
-        <button onClick={onClose} className="mt-4 w-full py-2 rounded-lg text-[11px] font-semibold text-slate-400 hover:text-white border border-slate-800 hover:border-slate-600 transition-colors">
+        <div className="mt-4 text-[9px] text-zinc-400 text-center">Powered by Stripe · Per-tip billing available</div>
+        <button onClick={onClose} className="mt-4 w-full py-2 rounded-lg text-[11px] font-semibold text-zinc-600 hover:text-white border border-zinc-800 hover:border-zinc-600 transition-colors">
           Close
         </button>
       </div>
@@ -347,15 +347,15 @@ function IntegrationStatus() {
   }, [])
 
   return (
-    <div className="rounded-lg p-3" style={{ background: 'rgba(255,255,255,0.015)', border: '1px solid rgba(255,255,255,0.04)' }}>
-      <div className="text-[9px] font-bold uppercase tracking-[0.2em] text-slate-600 mb-2">Integration Status</div>
+    <div className="rounded-lg p-3" style={{ background: '#f5f5f5', border: '1px solid rgba(255,255,255,0.04)' }}>
+      <div className="text-[9px] font-bold uppercase tracking-[0.2em] text-zinc-400 mb-2">Integration Status</div>
       <div className="grid grid-cols-2 gap-x-3 gap-y-1.5">
         {integrations.map(item => {
           const ready = Boolean(statuses[item.key])
           return (
             <div key={item.key} className="flex items-center gap-1.5 min-w-0">
               <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${ready ? 'bg-green-500' : 'bg-slate-700'}`} />
-              <span className="text-[9px] text-slate-500 truncate">{item.name}</span>
+              <span className="text-[9px] text-zinc-500 truncate">{item.name}</span>
             </div>
           )
         })}
@@ -375,20 +375,20 @@ function CostTracker() {
   ]
   const total = costs.reduce((s, c) => s + c.cost, 0)
   return (
-    <div className="rounded-lg p-3" style={{ background: 'rgba(255,255,255,0.015)', border: '1px solid rgba(255,255,255,0.04)' }}>
+    <div className="rounded-lg p-3" style={{ background: '#f5f5f5', border: '1px solid rgba(255,255,255,0.04)' }}>
       <div className="flex items-center justify-between mb-2">
-        <span className="text-[9px] font-bold uppercase tracking-[0.2em] text-slate-600">Cost Per Tip</span>
+        <span className="text-[9px] font-bold uppercase tracking-[0.2em] text-zinc-400">Cost Per Tip</span>
         <span className="text-[11px] font-black text-green-400 tabular-nums">${total.toFixed(4)}</span>
       </div>
       <div className="flex flex-col gap-1">
         {costs.map(c => (
           <div key={c.label} className="flex items-center justify-between">
             <span className={`text-[9px] ${c.color}`}>{c.label}</span>
-            <span className="text-[9px] font-mono text-slate-600">${c.cost.toFixed(4)}</span>
+            <span className="text-[9px] font-mono text-zinc-400">${c.cost.toFixed(4)}</span>
           </div>
         ))}
       </div>
-      <div className="mt-2 pt-2 border-t text-[9px] text-slate-700" style={{ borderColor: 'rgba(255,255,255,0.04)' }}>
+      <div className="mt-2 pt-2 border-t text-[9px] text-zinc-400" style={{ borderColor: '#f0f0f0' }}>
         District billed $0.15-0.35 per tip via Stripe · Sponge handles agent micropayments
       </div>
     </div>
@@ -404,41 +404,41 @@ function TipRow({ tip, allTips, onClick, fresh }: { tip: Tip; allTips: Tip[]; on
     <button onClick={onClick}
       className="group w-full text-left p-3 rounded-lg transition-all duration-200 hover:scale-[1.01]"
       style={{
-        background: fresh ? 'rgba(6,182,212,0.06)' : 'rgba(255,255,255,0.02)',
-        border: `1px solid ${fresh ? 'rgba(6,182,212,0.18)' : urgency === 'critical' ? 'rgba(239,68,68,0.12)' : 'rgba(255,255,255,0.04)'}`,
-        boxShadow: urgency === 'critical' ? '0 0 20px rgba(239,68,68,0.08)' : 'none',
+        background: fresh ? 'rgba(6,182,212,0.05)' : '#ffffff',
+        border: `1px solid ${fresh ? 'rgba(6,182,212,0.35)' : urgency === 'critical' ? 'rgba(239,68,68,0.3)' : '#e4e4e7'}`,
+        boxShadow: urgency === 'critical' ? '0 2px 12px rgba(239,68,68,0.12)' : '0 1px 3px rgba(0,0,0,0.04)',
       }}>
       <div className="flex items-center justify-between gap-2 mb-1.5">
         <div className="flex items-center gap-1.5 min-w-0">
           <span className="text-xs">{icon}</span>
           <span className={`shrink-0 text-[9px] font-bold uppercase px-1.5 py-0.5 rounded ${URGENCY_BG[urgency]}`}>{tip.urgency}</span>
-          <span className="text-xs text-slate-300 font-medium truncate capitalize">{tip.category?.replace(/_/g,' ')}</span>
+          <span className="text-xs text-zinc-800 font-medium truncate capitalize">{tip.category?.replace(/_/g,' ')}</span>
         </div>
         <div className="flex items-center gap-1.5 shrink-0">
           <span className={`text-[9px] font-medium uppercase px-1.5 py-0.5 rounded border ${STATUS_STYLE[tip.status?.toLowerCase() ?? 'new'] ?? STATUS_STYLE.new}`}>{tip.status}</span>
-          <span className="text-[10px] text-slate-600 tabular-nums">{timeAgo(tip.submitted_at ?? tip.created_at)}</span>
+          <span className="text-[10px] text-zinc-400 tabular-nums">{timeAgo(tip.submitted_at ?? tip.created_at)}</span>
         </div>
       </div>
-      <p className="text-[11px] text-slate-500 line-clamp-2 leading-relaxed">{tip.ai_summary ?? tip.description}</p>
+      <p className="text-[11px] text-zinc-500 line-clamp-2 leading-relaxed">{tip.ai_summary ?? tip.description}</p>
       <div className="flex items-center gap-3 mt-1.5 flex-wrap">
-        {tip.school_name && <span className="text-[10px] text-slate-600">📍 {tip.school_name}</span>}
+        {tip.school_name && <span className="text-[10px] text-zinc-400">📍 {tip.school_name}</span>}
         {tip.multilingual_call && tip.caller_language && (
           <span className="text-[9px] px-1.5 py-0.5 rounded bg-indigo-950/60 border border-indigo-800/30 text-indigo-400">
             🌐 {tip.caller_language}
           </span>
         )}
         {tip.caller_emotion && (
-          <span className={`text-[9px] font-medium ${EMOTION_COLOR[tip.caller_emotion] ?? 'text-slate-500'}`}>
+          <span className={`text-[9px] font-medium ${EMOTION_COLOR[tip.caller_emotion] ?? 'text-zinc-500'}`}>
             {tip.caller_emotion}
           </span>
         )}
         {tip.escalation_risk && tip.escalation_risk !== 'stable' && (
-          <span className={`text-[9px] font-bold uppercase ${ESCALATION_COLOR[tip.escalation_risk] ?? 'text-slate-500'}`}>
+          <span className={`text-[9px] font-bold uppercase ${ESCALATION_COLOR[tip.escalation_risk] ?? 'text-zinc-500'}`}>
             {tip.escalation_risk}
           </span>
         )}
         {tip.call_duration_seconds && (
-          <span className="text-[9px] text-slate-700">{tip.call_duration_seconds}s call</span>
+          <span className="text-[9px] text-zinc-400">{tip.call_duration_seconds}s call</span>
         )}
       </div>
       {pattern && (
@@ -452,6 +452,68 @@ function TipRow({ tip, allTips, onClick, fresh }: { tip: Tip; allTips: Tip[]; on
   )
 }
 
+function DispatchBriefCard({ brief }: { brief: string }) {
+  const [copied, setCopied] = useState(false)
+  const copy = () => {
+    navigator.clipboard.writeText(brief)
+    setCopied(true)
+    setTimeout(() => setCopied(false), 2000)
+  }
+  return (
+    <div className="rounded-lg p-4" style={{ background: 'rgba(239,68,68,0.06)', border: '1px solid rgba(239,68,68,0.25)' }}>
+      <div className="flex items-center justify-between mb-3">
+        <div className="text-[9px] font-bold uppercase tracking-[0.2em] text-red-500">911 Dispatch Brief</div>
+        <button onClick={copy}
+          className="text-[10px] font-semibold px-3 py-1 rounded transition-all"
+          style={{ background: copied ? 'rgba(34,197,94,0.15)' : 'rgba(239,68,68,0.15)', color: copied ? '#4ade80' : '#f87171', border: `1px solid ${copied ? 'rgba(34,197,94,0.3)' : 'rgba(239,68,68,0.3)'}` }}>
+          {copied ? '✓ Copied' : '📋 Copy for 911'}
+        </button>
+      </div>
+      <p className="text-xs text-red-200 leading-relaxed font-mono whitespace-pre-wrap">{brief}</p>
+    </div>
+  )
+}
+
+function LiveCallOverlay({ call }: { call: { callId: string, transcript: string, probability: number, threatLevel: number, school: string, features: string[] } }) {
+  const pct = Math.min(call.probability, 100)
+  const barColor = pct > 50 ? '#ef4444' : pct > 15 ? '#f97316' : '#22c55e'
+  return (
+    <div className="fixed inset-0 z-[100] pointer-events-none flex flex-col items-end justify-start p-6">
+      <div className="w-80 rounded-xl overflow-hidden shadow-2xl pointer-events-auto"
+        style={{ background: '#ffffff', border: '1px solid rgba(239,68,68,0.3)', boxShadow: '0 0 40px rgba(239,68,68,0.15)' }}>
+        {/* Header */}
+        <div className="flex items-center gap-2 px-4 py-3" style={{ borderBottom: '1px solid rgba(239,68,68,0.15)', background: 'rgba(239,68,68,0.08)' }}>
+          <span className="w-2 h-2 rounded-full bg-red-500 animate-pulse" />
+          <span className="text-[10px] font-bold uppercase tracking-widest text-red-400">Live Call Active</span>
+          <span className="ml-auto text-[9px] text-zinc-400 truncate max-w-[120px]">{call.school}</span>
+        </div>
+        {/* Probability bar */}
+        <div className="px-4 py-3">
+          <div className="flex items-center justify-between mb-1.5">
+            <span className="text-[9px] uppercase tracking-widest text-zinc-400">Threat Probability</span>
+            <span className="text-sm font-black tabular-nums" style={{ color: barColor }}>{pct.toFixed(1)}%</span>
+          </div>
+          <div className="w-full h-2 rounded-full bg-zinc-100 overflow-hidden">
+            <div className="h-full rounded-full transition-all duration-700"
+              style={{ width: `${pct}%`, background: `linear-gradient(90deg, #22c55e, ${barColor})` }} />
+          </div>
+          <div className="flex justify-between mt-1">
+            <span className="text-[8px] text-zinc-400">Level {call.threatLevel}/5</span>
+            {call.features.length > 0 && (
+              <span className="text-[8px] text-zinc-400">triggers: {call.features.slice(0,2).join(', ')}</span>
+            )}
+          </div>
+        </div>
+        {/* Transcript */}
+        <div className="px-4 pb-4">
+          <div className="text-[9px] text-zinc-400 mb-1 uppercase tracking-widest">Transcript</div>
+          <p className="text-[10px] text-zinc-600 leading-relaxed line-clamp-4">{call.transcript}<span className="animate-pulse">▋</span></p>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 // Tip drawer (detail panel)
 function TipDrawer({ tip, onClose }: { tip: Tip; onClose: () => void }) {
   const urgency = tip.urgency?.toLowerCase() ?? 'low'
@@ -459,19 +521,28 @@ function TipDrawer({ tip, onClose }: { tip: Tip; onClose: () => void }) {
   const score   = tip.ai_triage_score ?? tip.ai_score
   return (
     <div className="fixed inset-0 z-50 flex" onClick={onClose}>
-      <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" />
+      <div className="absolute inset-0 backdrop-blur-sm" style={{background: 'rgba(9,9,11,0.35)'}} />
       <div className="relative z-10 ml-auto h-full w-full max-w-md flex flex-col overflow-y-auto"
-        style={{ background: 'rgba(8,9,14,0.98)', borderLeft: '1px solid rgba(255,255,255,0.05)' }}
+        style={{ background: '#ffffff', borderLeft: '1px solid #e4e4e7' }}
         onClick={e => e.stopPropagation()}>
         {/* Header */}
         <div className="flex items-center justify-between px-5 py-4 sticky top-0 z-10 border-b"
-          style={{ borderColor: 'rgba(255,255,255,0.05)', background: 'rgba(8,9,14,0.98)' }}>
+          style={{ borderColor: '#ebebeb', background: '#ffffff' }}>
           <div className="flex items-center gap-2">
             <span>{icon}</span>
             <span className={`text-[9px] font-bold uppercase px-2 py-0.5 rounded ${URGENCY_BG[urgency]}`}>{tip.urgency}</span>
-            <span className="text-sm font-semibold text-slate-200 capitalize">{tip.category?.replace(/_/g,' ')}</span>
+            <span className="text-sm font-semibold text-zinc-900 capitalize">{tip.category?.replace(/_/g,' ')}</span>
           </div>
-          <button onClick={onClose} className="text-slate-600 hover:text-slate-300 transition-colors w-6 h-6 flex items-center justify-center rounded">✕</button>
+          <a
+            href={`/api/report/${tip.id}`}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-[10px] font-semibold px-3 py-1 rounded transition-all hover:opacity-80"
+            style={{ background: '#f0f0f0', color: '#94a3b8', border: '1px solid rgba(255,255,255,0.08)' }}
+          >
+            📄 Report
+          </a>
+          <button onClick={onClose} className="text-zinc-400 hover:text-zinc-800 transition-colors w-6 h-6 flex items-center justify-center rounded">✕</button>
         </div>
 
         <div className="p-5 flex flex-col gap-5">
@@ -480,13 +551,13 @@ function TipDrawer({ tip, onClose }: { tip: Tip; onClose: () => void }) {
             <span className={`text-[9px] font-semibold uppercase px-2 py-1 rounded border tracking-widest ${STATUS_STYLE[tip.status?.toLowerCase() ?? 'new'] ?? STATUS_STYLE.new}`}>
               {tip.status}
             </span>
-            <span className="text-[10px] text-slate-600 font-mono">{new Date(tip.submitted_at ?? tip.created_at).toLocaleString()}</span>
+            <span className="text-[10px] text-zinc-400 font-mono">{new Date(tip.submitted_at ?? tip.created_at).toLocaleString()}</span>
           </div>
 
           {/* School */}
           {tip.school_name && (
-            <div className="flex items-center gap-2 text-sm text-slate-300">
-              <span className="text-slate-600">📍</span><span className="font-medium">{tip.school_name}</span>
+            <div className="flex items-center gap-2 text-sm text-zinc-800">
+              <span className="text-zinc-400">📍</span><span className="font-medium">{tip.school_name}</span>
             </div>
           )}
 
@@ -494,7 +565,7 @@ function TipDrawer({ tip, onClose }: { tip: Tip; onClose: () => void }) {
           {tip.ai_summary && (
             <div className="rounded-lg p-4" style={{ background: 'rgba(6,182,212,0.04)', border: '1px solid rgba(6,182,212,0.12)' }}>
               <div className="text-[9px] font-bold uppercase tracking-[0.2em] text-cyan-700 mb-2">AI Assessment</div>
-              <p className="text-sm text-slate-200 leading-relaxed">{tip.ai_summary}</p>
+              <p className="text-sm text-zinc-900 leading-relaxed">{tip.ai_summary}</p>
             </div>
           )}
 
@@ -503,25 +574,25 @@ function TipDrawer({ tip, onClose }: { tip: Tip; onClose: () => void }) {
               <div className="text-[9px] font-bold uppercase tracking-[0.2em] text-emerald-700 mb-3">Multi-Model Consensus</div>
               <div className="grid grid-cols-3 gap-3 text-xs">
                 <div>
-                  <div className="text-slate-700 mb-0.5 text-[9px]">Claude</div>
+                  <div className="text-zinc-400 mb-0.5 text-[9px]">Claude</div>
                   <div className="text-orange-400 font-bold">{tip.ai_triage_score ?? '–'}/10</div>
                 </div>
                 <div>
-                  <div className="text-slate-700 mb-0.5 text-[9px]">Gemini</div>
+                  <div className="text-zinc-400 mb-0.5 text-[9px]">Gemini</div>
                   <div className="text-blue-400 font-bold">{tip.gemini_level != null ? `${tip.gemini_level}/5` : '–'}</div>
                 </div>
                 <div>
-                  <div className="text-slate-700 mb-0.5 text-[9px]">Consensus</div>
+                  <div className="text-zinc-400 mb-0.5 text-[9px]">Consensus</div>
                   <div className={`font-bold ${tip.consensus ? 'text-green-400' : 'text-yellow-500'}`}>
                     {tip.consensus ? 'CONFIRMED' : 'DIVERGENT'}
                   </div>
                 </div>
               </div>
               {tip.gemini_reasoning && (
-                <p className="text-[10px] text-slate-600 mt-2 italic">{tip.gemini_reasoning}</p>
+                <p className="text-[10px] text-zinc-400 mt-2 italic">{tip.gemini_reasoning}</p>
               )}
               {tip.multilingual_call && tip.caller_language && (
-                <div className="mt-2 pt-2 border-t text-[10px] text-indigo-500" style={{ borderColor: 'rgba(255,255,255,0.05)' }}>
+                <div className="mt-2 pt-2 border-t text-[10px] text-indigo-500" style={{ borderColor: '#ebebeb' }}>
                   🌐 Originally in {tip.caller_language} - auto-translated by Gemini Live
                 </div>
               )}
@@ -530,31 +601,31 @@ function TipDrawer({ tip, onClose }: { tip: Tip; onClose: () => void }) {
 
           {/* Caller analysis */}
           {(tip.caller_emotion || tip.caller_tone || tip.escalation_risk) && (
-            <div className="rounded-lg p-4" style={{ background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.05)' }}>
-              <div className="text-[9px] font-bold uppercase tracking-[0.2em] text-slate-600 mb-3">Caller Analysis</div>
+            <div className="rounded-lg p-4" style={{ background: '#f9f9f9', border: '1px solid rgba(255,255,255,0.05)' }}>
+              <div className="text-[9px] font-bold uppercase tracking-[0.2em] text-zinc-400 mb-3">Caller Analysis</div>
               <div className="grid grid-cols-3 gap-3 text-xs">
                 {tip.caller_emotion && (
                   <div>
-                    <div className="text-slate-700 mb-0.5 text-[9px]">Emotion</div>
-                    <div className={`font-semibold capitalize ${EMOTION_COLOR[tip.caller_emotion] ?? 'text-slate-400'}`}>{tip.caller_emotion}</div>
+                    <div className="text-zinc-400 mb-0.5 text-[9px]">Emotion</div>
+                    <div className={`font-semibold capitalize ${EMOTION_COLOR[tip.caller_emotion] ?? 'text-zinc-600'}`}>{tip.caller_emotion}</div>
                   </div>
                 )}
                 {tip.caller_tone && (
                   <div>
-                    <div className="text-slate-700 mb-0.5 text-[9px]">Tone</div>
-                    <div className="text-slate-300 capitalize">{tip.caller_tone}</div>
+                    <div className="text-zinc-400 mb-0.5 text-[9px]">Tone</div>
+                    <div className="text-zinc-800 capitalize">{tip.caller_tone}</div>
                   </div>
                 )}
                 {tip.escalation_risk && (
                   <div>
-                    <div className="text-slate-700 mb-0.5 text-[9px]">Escalation</div>
-                    <div className={`font-bold capitalize ${ESCALATION_COLOR[tip.escalation_risk] ?? 'text-slate-400'}`}>{tip.escalation_risk}</div>
+                    <div className="text-zinc-400 mb-0.5 text-[9px]">Escalation</div>
+                    <div className={`font-bold capitalize ${ESCALATION_COLOR[tip.escalation_risk] ?? 'text-zinc-600'}`}>{tip.escalation_risk}</div>
                   </div>
                 )}
               </div>
               {tip.call_duration_seconds && (
-                <div className="mt-3 pt-3 border-t text-xs text-slate-600" style={{ borderColor: 'rgba(255,255,255,0.05)' }}>
-                  Call duration: <span className="text-slate-400">{tip.call_duration_seconds}s</span>
+                <div className="mt-3 pt-3 border-t text-xs text-zinc-400" style={{ borderColor: '#ebebeb' }}>
+                  Call duration: <span className="text-zinc-600">{tip.call_duration_seconds}s</span>
                 </div>
               )}
             </div>
@@ -563,10 +634,10 @@ function TipDrawer({ tip, onClose }: { tip: Tip; onClose: () => void }) {
           {/* Credibility signals */}
           {tip.credibility_signals && tip.credibility_signals.length > 0 && (
             <div>
-              <div className="text-[9px] font-bold uppercase tracking-[0.2em] text-slate-600 mb-2">Credibility Signals</div>
+              <div className="text-[9px] font-bold uppercase tracking-[0.2em] text-zinc-400 mb-2">Credibility Signals</div>
               <div className="flex flex-col gap-1">
                 {tip.credibility_signals.map((s, i) => (
-                  <div key={i} className="flex items-start gap-2 text-xs text-slate-400">
+                  <div key={i} className="flex items-start gap-2 text-xs text-zinc-600">
                     <span className="text-green-600 mt-0.5 shrink-0">+</span>{s}
                   </div>
                 ))}
@@ -577,13 +648,52 @@ function TipDrawer({ tip, onClose }: { tip: Tip; onClose: () => void }) {
           {/* Key facts */}
           {tip.key_facts && tip.key_facts.length > 0 && (
             <div>
-              <div className="text-[9px] font-bold uppercase tracking-[0.2em] text-slate-600 mb-2">Key Facts</div>
+              <div className="text-[9px] font-bold uppercase tracking-[0.2em] text-zinc-400 mb-2">Key Facts</div>
               <div className="flex flex-col gap-1">
                 {tip.key_facts.map((f, i) => (
-                  <div key={i} className="flex items-start gap-2 text-xs text-slate-400">
-                    <span className="text-slate-700 mt-0.5 shrink-0">·</span>{f}
+                  <div key={i} className="flex items-start gap-2 text-xs text-zinc-600">
+                    <span className="text-zinc-400 mt-0.5 shrink-0">·</span>{f}
                   </div>
                 ))}
+              </div>
+            </div>
+          )}
+
+          {/* 911 Dispatch Brief — level 4-5 only */}
+          {tip.dispatch_brief && (
+            <DispatchBriefCard brief={tip.dispatch_brief} />
+          )}
+
+          {/* Threat window */}
+          {tip.threat_window && (
+            <div className="rounded-lg p-3" style={{ background: 'rgba(251,191,36,0.04)', border: '1px solid rgba(251,191,36,0.12)' }}>
+              <div className="text-[9px] font-bold uppercase tracking-[0.2em] text-yellow-700 mb-1">Predicted Threat Window</div>
+              <p className="text-sm text-yellow-300 font-semibold">{tip.threat_window}</p>
+            </div>
+          )}
+
+          {/* Cross-school alert */}
+          {tip.cross_school_alert && (
+            <div className="rounded-lg p-3" style={{ background: 'rgba(168,85,247,0.06)', border: '1px solid rgba(168,85,247,0.2)' }}>
+              <div className="text-[9px] font-bold uppercase tracking-[0.2em] text-purple-500 mb-1">Cross-School Pattern</div>
+              <p className="text-xs text-purple-300">{tip.cross_school_alert}</p>
+            </div>
+          )}
+
+          {/* Bayesian score */}
+          {tip.bayes_probability_pct != null && (
+            <div className="rounded-lg p-4" style={{ background: '#f9f9f9', border: '1px solid rgba(255,255,255,0.05)' }}>
+              <div className="text-[9px] font-bold uppercase tracking-[0.2em] text-zinc-400 mb-3">Bayesian Threat Probability</div>
+              <div className="flex items-center gap-3 mb-2">
+                <div className="text-2xl font-black tabular-nums" style={{ color: tip.bayes_probability_pct > 50 ? '#ef4444' : tip.bayes_probability_pct > 15 ? '#f97316' : '#22c55e' }}>
+                  {tip.bayes_probability_pct}%
+                </div>
+                {tip.three_model_consensus && (
+                  <span className="text-[9px] font-bold uppercase px-2 py-0.5 rounded bg-green-950/50 border border-green-800/30 text-green-400">3-model consensus</span>
+                )}
+              </div>
+              <div className="w-full h-1.5 rounded-full bg-zinc-100 overflow-hidden">
+                <div className="h-full rounded-full transition-all duration-1000" style={{ width: `${Math.min(tip.bayes_probability_pct, 100)}%`, background: tip.bayes_probability_pct > 50 ? '#ef4444' : tip.bayes_probability_pct > 15 ? '#f97316' : '#22c55e' }} />
               </div>
             </div>
           )}
@@ -598,20 +708,20 @@ function TipDrawer({ tip, onClose }: { tip: Tip; onClose: () => void }) {
 
           {/* Transcript */}
           <div>
-            <div className="text-[9px] font-bold uppercase tracking-[0.2em] text-slate-600 mb-2">Caller Transcript</div>
-            <p className="text-xs text-slate-500 leading-relaxed whitespace-pre-wrap">{tip.description}</p>
+            <div className="text-[9px] font-bold uppercase tracking-[0.2em] text-zinc-400 mb-2">Caller Transcript</div>
+            <p className="text-xs text-zinc-500 leading-relaxed whitespace-pre-wrap">{tip.description}</p>
           </div>
 
           {/* Data grid */}
           <div className="rounded-lg p-4 grid grid-cols-2 gap-4 text-xs"
-            style={{ background: 'rgba(255,255,255,0.015)', border: '1px solid rgba(255,255,255,0.04)' }}>
+            style={{ background: '#f5f5f5', border: '1px solid rgba(255,255,255,0.04)' }}>
             {[
               ['Severity',  tip.severity ?? tip.urgency],
               ['Anonymous', tip.is_anonymous ? 'Yes' : 'No'],
               ['Timeline',  tip.timeline ?? '–'],
               ['AI Score',  `${score ?? '–'} / 10`],
             ].map(([k, v]) => (
-              <div key={k}><div className="text-slate-700 mb-0.5 text-[9px]">{k}</div><div className="text-slate-300 font-mono capitalize">{v}</div></div>
+              <div key={k}><div className="text-zinc-400 mb-0.5 text-[9px]">{k}</div><div className="text-zinc-800 font-mono capitalize">{v}</div></div>
             ))}
           </div>
 
@@ -626,9 +736,9 @@ function TipDrawer({ tip, onClose }: { tip: Tip; onClose: () => void }) {
 function Stat({ label, value, red, sub }: { label: string; value: number; red?: boolean; sub?: string }) {
   return (
     <div className="flex flex-col gap-0.5">
-      <div className="text-[9px] font-semibold uppercase tracking-[0.2em] text-slate-600">{label}</div>
-      <div className={`text-3xl font-black tabular-nums leading-none ${red && value > 0 ? 'text-red-400' : 'text-slate-200'}`}>{value}</div>
-      {sub && <div className="text-[9px] text-slate-700">{sub}</div>}
+      <div className="text-[9px] font-semibold uppercase tracking-[0.2em] text-zinc-400">{label}</div>
+      <div className={`text-3xl font-black tabular-nums leading-none ${red && value > 0 ? 'text-red-500' : 'text-zinc-900'}`}>{value}</div>
+      {sub && <div className="text-[9px] text-zinc-400">{sub}</div>}
     </div>
   )
 }
@@ -642,10 +752,10 @@ function LiveCounter() {
   }, [])
   return (
     <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-md"
-      style={{ background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.04)' }}>
+      style={{ background: '#f9f9f9', border: '1px solid rgba(255,255,255,0.04)' }}>
       <span className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse" />
-      <span className="text-[10px] font-mono text-slate-500 tabular-nums">{n.toLocaleString()}</span>
-      <span className="text-[9px] text-slate-700">calls</span>
+      <span className="text-[10px] font-mono text-zinc-500 tabular-nums">{n.toLocaleString()}</span>
+      <span className="text-[9px] text-zinc-400">calls</span>
     </div>
   )
 }
@@ -664,6 +774,8 @@ export default function Dashboard() {
   const [dateStr, setDateStr]     = useState('')
   const [orbMode, setOrbMode]     = useState<OrbMode>('thinking')
   const [showPricing, setShowPricing] = useState(false)
+
+  const [liveCall, setLiveCall] = useState<{callId: string, transcript: string, probability: number, threatLevel: number, school: string, features: string[]} | null>(null)
 
   // Demo
   const [demoRunning, setDemoRunning]       = useState(false)
@@ -697,7 +809,20 @@ export default function Dashboard() {
         setTimeout(() => setFreshIds(f => { const n = new Set(f); n.delete(t.id); return n }), 8000)
       })
       .subscribe()
-    return () => { supabase.removeChannel(ch) }
+
+    // Subscribe to live call updates
+    const liveCh = supabase.channel('live-calls-ui')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'live_calls' }, payload => {
+        const d = payload.new as any
+        if (d.status === 'active') {
+          setLiveCall({ callId: d.call_id, transcript: d.words_so_far, probability: d.probability_pct, threatLevel: d.threat_level, school: d.school_name || 'Unknown School', features: d.top_features || [] })
+          setOrbMode('speaking')
+        } else if (d.status === 'complete') {
+          setTimeout(() => { setLiveCall(null); setOrbMode('idle') }, 3000)
+        }
+      })
+      .subscribe()
+    return () => { supabase.removeChannel(ch); supabase.removeChannel(liveCh) }
   }, [demoRunning])
 
   useEffect(() => {
@@ -781,7 +906,7 @@ export default function Dashboard() {
     idle: 'STANDBY', listening: 'CALL ACTIVE', thinking: 'ANALYZING', speaking: 'INCOMING', critical: 'CRITICAL ALERT',
   }
   const ORB_COLOR: Record<OrbMode, string> = {
-    idle: 'text-slate-600', listening: 'text-orange-400', thinking: 'text-blue-400', speaking: 'text-cyan-400', critical: 'text-red-400',
+    idle: 'text-zinc-400', listening: 'text-orange-400', thinking: 'text-blue-400', speaking: 'text-cyan-400', critical: 'text-red-400',
   }
 
   return (
@@ -795,7 +920,9 @@ export default function Dashboard() {
         @keyframes scanLine { 0%{transform:translateY(0)} 100%{transform:translateY(100%)} }
       `}</style>
 
-      <div className="fixed inset-0 flex flex-col overflow-hidden" style={{ background: '#07090e', fontFamily: 'system-ui,-apple-system,sans-serif' }}>
+      <div className="fixed inset-0 flex flex-col overflow-hidden" style={{ background: '#f8f9fb', fontFamily: 'var(--font-geist-sans), system-ui, sans-serif' }}>
+
+        {liveCall && <LiveCallOverlay call={liveCall} />}
 
         {/* Critical flash */}
         {criticalFlash && (
@@ -813,27 +940,27 @@ export default function Dashboard() {
         {/* Ambient glow */}
         <div className="pointer-events-none fixed inset-0 z-0" style={{
           background: orbMode === 'critical'
-            ? 'radial-gradient(ellipse 60% 50% at 50% 45%, rgba(239,68,68,0.05) 0%, transparent 70%)'
-            : 'radial-gradient(ellipse 60% 50% at 50% 45%, rgba(6,182,212,0.03) 0%, transparent 70%)',
+            ? 'radial-gradient(ellipse 60% 50% at 50% 45%, rgba(239,68,68,0.06) 0%, transparent 70%)'
+            : 'none',
           transition: 'background 1.8s ease',
         }} />
 
         {/* ── Header ── */}
         <header className="relative z-10 flex items-center justify-between px-5 h-12 shrink-0"
-          style={{ borderBottom: '1px solid rgba(255,255,255,0.05)', background: 'rgba(7,9,14,0.9)', backdropFilter: 'blur(20px)' }}>
+          style={{ borderBottom: '1px solid #e4e4e7', background: 'rgba(248,249,251,0.96)', backdropFilter: 'blur(16px)' }}>
 
           {/* Left: brand + tabs */}
           <div className="flex items-center gap-5">
             <div className="flex items-center gap-2.5">
               <div className="w-6 h-6 rounded-md bg-red-600 flex items-center justify-center text-white text-[9px] font-black">TV</div>
               <div>
-                <div className="text-[11px] font-bold text-slate-200 tracking-[0.1em] leading-none">THREAT VECTOR</div>
-                <div className="text-[8px] text-slate-700 leading-none mt-0.5 tracking-widest">AI COMMAND CENTER</div>
+                <div className="text-[11px] font-bold text-zinc-900 tracking-[0.1em] leading-none">THREAT VECTOR</div>
+                <div className="text-[8px] text-zinc-400 leading-none mt-0.5 tracking-widest">AI COMMAND CENTER</div>
               </div>
             </div>
 
             {/* Tab switcher */}
-            <div className="flex items-center gap-0.5 p-0.5 rounded-lg" style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.05)' }}>
+            <div className="flex items-center gap-0.5 p-0.5 rounded-lg" style={{ background: '#f5f5f5', border: '1px solid rgba(255,255,255,0.05)' }}>
               {([
                 { id: 'command',      label: 'Command Center',       icon: '⬡' },
                 { id: 'intelligence', label: 'Threat Intelligence',  icon: '◈' },
@@ -841,8 +968,8 @@ export default function Dashboard() {
                 <button key={tab.id} onClick={() => setActiveTab(tab.id)}
                   className={`flex items-center gap-1.5 px-3 py-1 rounded-md text-[10px] font-semibold tracking-wide transition-all duration-200 ${
                     activeTab === tab.id
-                      ? 'bg-slate-800/80 text-slate-200 shadow-sm'
-                      : 'text-slate-600 hover:text-slate-400'
+                      ? 'bg-white text-zinc-900 shadow-sm border border-zinc-200'
+                      : 'text-zinc-400 hover:text-zinc-600'
                   }`}>
                   <span className="text-[11px]">{tab.icon}</span>
                   {tab.label}
@@ -857,8 +984,8 @@ export default function Dashboard() {
             <button onClick={runDemo} disabled={demoRunning}
               className={`flex items-center gap-1.5 text-[10px] font-semibold uppercase px-3 py-1.5 rounded-md border transition-all tracking-widest ${
                 demoRunning
-                  ? 'border-slate-800 text-slate-700 cursor-not-allowed'
-                  : 'border-cyan-800/60 text-cyan-400 bg-cyan-950/20 hover:bg-cyan-950/40 hover:border-cyan-600/60'
+                  ? 'border-zinc-800 text-zinc-400 cursor-not-allowed'
+                  : 'border-cyan-500/60 text-cyan-600 bg-cyan-50 hover:bg-cyan-100 hover:border-cyan-600'
               }`}>
               {demoRunning ? <><span className="w-1.5 h-1.5 rounded-full bg-cyan-600 animate-pulse" />Processing…</> : <><span>📞</span>Demo Call</>}
             </button>
@@ -873,7 +1000,7 @@ export default function Dashboard() {
                 {newCount} NEW
               </span>
             )}
-            <span className="text-[10px] text-slate-700 font-mono hidden xl:block">{dateStr}</span>
+            <span className="text-[10px] text-zinc-400 font-mono hidden xl:block">{dateStr}</span>
           </div>
         </header>
 
@@ -883,10 +1010,10 @@ export default function Dashboard() {
 
             {/* Left panel */}
             <div className="hidden lg:flex flex-col justify-between py-6 px-5 w-48 shrink-0"
-              style={{ borderRight: '1px solid rgba(255,255,255,0.04)' }}>
+              style={{ borderRight: '1px solid #e4e4e7' }}>
               <div className="flex flex-col gap-5">
                 <div className="flex items-center justify-between">
-                  <div className="text-[9px] font-semibold uppercase tracking-[0.2em] text-slate-700">Overview</div>
+                  <div className="text-[9px] font-semibold uppercase tracking-[0.2em] text-zinc-400">Overview</div>
                   <button onClick={() => setShowPricing(true)}
                     className="px-2 py-1 rounded-md text-[9px] font-semibold uppercase tracking-wide text-cyan-400 border border-cyan-900/60 hover:border-cyan-700/70 hover:bg-cyan-950/20 transition-colors">
                     Pricing
@@ -899,16 +1026,16 @@ export default function Dashboard() {
                   <Stat label="Resolved" value={resolved} sub="closed" />
                 </div>
 
-                <div className="flex flex-col gap-3 pt-5 border-t" style={{ borderColor: 'rgba(255,255,255,0.04)' }}>
-                  <div className="text-[9px] font-semibold uppercase tracking-[0.2em] text-slate-700">Metrics</div>
+                <div className="flex flex-col gap-3 pt-5 border-t" style={{ borderColor: '#f0f0f0' }}>
+                  <div className="text-[9px] font-semibold uppercase tracking-[0.2em] text-zinc-400">Metrics</div>
                   {[
                     { k: 'Avg Triage',  v: '8.2s',               c: 'text-cyan-500'  },
                     { k: 'AI Accuracy', v: '94%',                 c: 'text-green-500' },
-                    { k: 'Anonymity',   v: '100%',                c: 'text-slate-300' },
-                    { k: 'Channels',    v: 'Voice · SMS · Email', c: 'text-slate-500' },
+                    { k: 'Anonymity',   v: '100%',                c: 'text-zinc-800' },
+                    { k: 'Channels',    v: 'Voice · SMS · Email', c: 'text-zinc-500' },
                   ].map(m => (
                     <div key={m.k}>
-                      <div className="text-[8px] text-slate-700 uppercase tracking-wide mb-0.5">{m.k}</div>
+                      <div className="text-[8px] text-zinc-400 uppercase tracking-wide mb-0.5">{m.k}</div>
                       <div className={`text-[11px] font-semibold ${m.c}`}>{m.v}</div>
                     </div>
                   ))}
@@ -941,13 +1068,13 @@ export default function Dashboard() {
               {/* Live transcript */}
               {demoRunning && (
                 <div className="w-full max-w-lg rounded-lg px-4 py-3"
-                  style={{ background: 'rgba(7,9,14,0.92)', border: '1px solid rgba(6,182,212,0.15)', backdropFilter: 'blur(16px)' }}>
+                  style={{ background: '#ffffff', border: '1px solid rgba(6,182,212,0.25)', boxShadow: '0 2px 12px rgba(0,0,0,0.06)' }}>
                   <div className="flex items-center gap-2 mb-2">
                     <span className="w-1.5 h-1.5 rounded-full bg-red-500 animate-pulse" />
-                    <span className="text-[8px] font-bold uppercase tracking-[0.25em] text-slate-600">Live Transcript</span>
+                    <span className="text-[8px] font-bold uppercase tracking-[0.25em] text-zinc-400">Live Transcript</span>
                     <div className="ml-auto"><Waveform active={waveActive} /></div>
                   </div>
-                  <p className="text-[12px] text-slate-300 leading-relaxed min-h-[2.5rem]">
+                  <p className="text-[12px] text-zinc-800 leading-relaxed min-h-[2.5rem]">
                     {transcript}
                     {!transcriptFull && <span className="inline-block w-0.5 h-3.5 bg-cyan-400 animate-pulse ml-0.5 align-text-bottom" />}
                     {transcriptFull && <span className="text-cyan-500 ml-1">✓</span>}
@@ -958,8 +1085,8 @@ export default function Dashboard() {
               {/* Pipeline */}
               {demoRunning && pipelineStep >= 0 && (
                 <div className="w-full max-w-2xl rounded-lg px-4 py-3"
-                  style={{ background: 'rgba(7,9,14,0.88)', border: '1px solid rgba(255,255,255,0.04)', backdropFilter: 'blur(8px)' }}>
-                  <div className="text-[8px] font-bold uppercase tracking-[0.25em] text-slate-700 mb-3">Processing Pipeline</div>
+                  style={{ background: '#ffffff', border: '1px solid #e4e4e7', boxShadow: '0 2px 8px rgba(0,0,0,0.04)' }}>
+                  <div className="text-[8px] font-bold uppercase tracking-[0.25em] text-zinc-400 mb-3">Processing Pipeline</div>
                   <PipelineVisualizer
                     activeStep={pipelineStep < PIPELINE_STEPS.length ? pipelineStep : PIPELINE_STEPS.length}
                     stepTimes={stepTimes}
@@ -971,11 +1098,11 @@ export default function Dashboard() {
 
             {/* Right: live feed */}
             <div className="flex flex-col w-80 xl:w-88 shrink-0 border-l min-h-0"
-              style={{ borderColor: 'rgba(255,255,255,0.04)', background: 'rgba(7,9,14,0.6)', backdropFilter: 'blur(8px)' }}>
-              <div className="px-4 pt-4 pb-3 shrink-0 border-b" style={{ borderColor: 'rgba(255,255,255,0.04)' }}>
+              style={{ borderColor: '#e4e4e7', background: '#fafafa' }}>
+              <div className="px-4 pt-4 pb-3 shrink-0 border-b" style={{ borderColor: '#f0f0f0' }}>
                 <div className="flex items-center justify-between mb-3">
-                  <span className="text-[9px] font-bold uppercase tracking-[0.2em] text-slate-600">Live Feed</span>
-                  <span className="text-[10px] text-slate-700 font-mono tabular-nums">{filtered.length}</span>
+                  <span className="text-[9px] font-bold uppercase tracking-[0.2em] text-zinc-400">Live Feed</span>
+                  <span className="text-[10px] text-zinc-400 font-mono tabular-nums">{filtered.length}</span>
                 </div>
                 <div className="flex flex-wrap gap-1">
                   {[
@@ -986,7 +1113,7 @@ export default function Dashboard() {
                   ].map(f => (
                     <button key={f.k} onClick={() => setFilter(f.k)}
                       className={`px-3 py-1 rounded-full text-[10px] font-semibold uppercase tracking-wide transition-colors ${
-                        filter === f.k ? 'bg-white/10 text-white' : 'text-slate-600 hover:text-slate-400'
+                        filter === f.k ? 'bg-zinc-900 text-white' : 'text-zinc-400 hover:text-zinc-700'
                       }`}>
                       {f.dot && <span className={f.dot}>• </span>}{f.l}
                     </button>
@@ -997,13 +1124,13 @@ export default function Dashboard() {
               <div className="flex-1 overflow-y-auto px-3 py-3 flex flex-col gap-1.5 min-h-0">
                 {loading ? (
                   [...Array(4)].map((_, i) => (
-                    <div key={i} className="h-16 rounded-lg animate-pulse" style={{ background: 'rgba(255,255,255,0.02)' }} />
+                    <div key={i} className="h-16 rounded-lg animate-pulse" style={{ background: '#f9f9f9' }} />
                   ))
                 ) : filtered.length === 0 ? (
                   <div className="flex flex-col items-center justify-center flex-1 gap-2.5 text-center py-12">
                     <div className="text-2xl opacity-20">📡</div>
-                    <div className="text-xs text-slate-600">No tips yet</div>
-                    <div className="text-[10px] text-slate-700 max-w-[140px] leading-relaxed">Logs appear in real time as calls come in</div>
+                    <div className="text-xs text-zinc-400">No tips yet</div>
+                    <div className="text-[10px] text-zinc-400 max-w-[140px] leading-relaxed">Logs appear in real time as calls come in</div>
                   </div>
                 ) : (
                   filtered.map(tip => (
@@ -1024,14 +1151,14 @@ export default function Dashboard() {
 
         {/* Sponsor ticker */}
         <div className="relative z-10 shrink-0 overflow-hidden"
-          style={{ borderTop: '1px solid rgba(255,255,255,0.04)', background: 'rgba(7,9,14,0.92)', height: 32 }}>
+          style={{ borderTop: '1px solid #e4e4e7', background: '#f8f9fb', height: 32 }}>
           <div className="flex items-center h-full" style={{ animation: 'ticker 35s linear infinite', width: 'max-content' }}>
             {[...SPONSORS, ...SPONSORS].map((s, i) => (
               <div key={i} className="flex items-center gap-1.5 px-6 h-full border-r shrink-0"
-                style={{ borderColor: 'rgba(255,255,255,0.04)' }}>
+                style={{ borderColor: '#f0f0f0' }}>
                 <div className="w-1 h-1 rounded-full" style={{ background: s.color }} />
-                <span className="text-[11px] font-medium text-slate-500">{s.name}</span>
-                <span className="text-[11px] font-medium text-slate-700">{s.role}</span>
+                <span className="text-[11px] font-medium text-zinc-500">{s.name}</span>
+                <span className="text-[11px] font-medium text-zinc-400">{s.role}</span>
               </div>
             ))}
           </div>

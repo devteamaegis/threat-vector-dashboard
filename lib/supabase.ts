@@ -39,4 +39,10 @@ export type Tip = {
   gemini_reasoning?: string | null
   consensus?: boolean | null
   s3_archive_uri?: string | null
+  cross_school_alert?: string | null
+  threat_window?: string | null
+  dispatch_brief?: string | null
+  bayes_probability_pct?: number | null
+  bayes_top_drivers?: Array<{ feature: string; keyword: string; ratio: number }> | null
+  three_model_consensus?: boolean | null
 }
