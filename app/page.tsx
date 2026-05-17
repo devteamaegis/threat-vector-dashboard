@@ -1,6 +1,7 @@
 'use client'
 
 import dynamic from 'next/dynamic'
+import Link from 'next/link'
 import { useEffect, useRef, useState, useCallback } from 'react'
 import { supabase, type Tip } from '@/lib/supabase'
 import type { OrbMode } from '@/components/ClaudiaOrb'
@@ -976,6 +977,11 @@ export default function Dashboard() {
                 </button>
               ))}
             </div>
+
+            <Link href="/attendance"
+              className="text-[10px] font-semibold uppercase px-3 py-1.5 rounded-md border border-slate-800 text-slate-500 hover:text-slate-200 hover:border-slate-600 transition-colors tracking-widest">
+              Attendance
+            </Link>
           </div>
 
           {/* Right: actions */}

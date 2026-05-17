@@ -54,6 +54,13 @@ function generateReportHTML(tip: any): string {
     : urgency === 'HIGH' ? '#c05000'
     : urgency === 'MEDIUM' ? '#7a6000'
     : '#444444'
+  const urgencyBg = urgency === 'CRITICAL' ? '#cc0000'
+    : urgency === 'HIGH' ? '#e56a00'
+    : urgency === 'MEDIUM' ? '#b99000'
+    : '#5a5a5a'
+  const bayesPct = typeof tip.bayes_probability_pct === 'number'
+    ? Math.max(0, Math.min(100, tip.bayes_probability_pct))
+    : 0
 
   const reportDate  = formatDate(tip.submitted_at ?? tip.created_at)
   const generatedAt = new Date().toLocaleString('en-US', { dateStyle: 'full', timeStyle: 'long' })
@@ -111,6 +118,14 @@ function generateReportHTML(tip: any): string {
       justify-content: space-between;
       margin-bottom: 6px;
     }
+    .wordmark {
+      font-size: 28pt;
+      font-weight: 950;
+      letter-spacing: 0.08em;
+      color: #cc0000;
+      line-height: 0.95;
+      text-transform: uppercase;
+    }
     .report-title {
       font-family: Georgia, 'Times New Roman', serif;
       font-size: 22pt;
@@ -137,6 +152,24 @@ function generateReportHTML(tip: any): string {
       white-space: nowrap;
       align-self: flex-start;
     }
+    .urgency-banner {
+      margin: 14px 0 14px;
+      padding: 10px 14px;
+      background: ${urgencyBg};
+      color: #fff;
+      font-size: 11pt;
+      font-weight: 900;
+      letter-spacing: 0.16em;
+      text-transform: uppercase;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .urgency-banner span:last-child {
+      font-size: 8pt;
+      font-weight: 700;
+      opacity: 0.86;
+    }
 
     hr.thick {
       border: none;
@@ -162,6 +195,8 @@ function generateReportHTML(tip: any): string {
     /* ── Sections ── */
     .section {
       margin-bottom: 20px;
+      break-inside: avoid;
+      page-break-inside: avoid;
     }
     .section-title {
       font-family: Georgia, 'Times New Roman', serif;
@@ -222,7 +257,7 @@ function generateReportHTML(tip: any): string {
 
     .model-grid {
       display: grid;
-      grid-template-columns: repeat(4, 1fr);
+      grid-template-columns: repeat(3, 1fr);
       gap: 8px;
       margin-bottom: 8px;
     }
@@ -235,6 +270,41 @@ function generateReportHTML(tip: any): string {
     .model-box .model-val  { font-size: 13pt; font-weight: 800; color: #111; }
     .model-box .model-val.consensus-yes { color: #1a7a3a; }
     .model-box .model-val.consensus-no  { color: #b05000; }
+    .probability-card {
+      border: 1px solid #d7d7d7;
+      background: #fbfbfb;
+      padding: 12px 14px;
+      margin-bottom: 12px;
+    }
+    .probability-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: baseline;
+      margin-bottom: 8px;
+    }
+    .probability-label {
+      font-size: 8pt;
+      font-weight: 900;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+      color: #555;
+    }
+    .probability-value {
+      font-size: 18pt;
+      font-weight: 950;
+      color: ${urgencyColor};
+    }
+    .probability-track {
+      height: 12px;
+      border: 1px solid #cfcfcf;
+      background: #eee;
+      overflow: hidden;
+    }
+    .probability-fill {
+      height: 100%;
+      width: ${bayesPct}%;
+      background: linear-gradient(90deg, #888, ${urgencyColor});
+    }
 
     .key-facts-list {
       margin: 0;
@@ -247,8 +317,8 @@ function generateReportHTML(tip: any): string {
     .transcript-box {
       font-family: 'Courier New', Courier, monospace;
       font-size: 9.5pt;
-      background: #fafafa;
-      border: 1px solid #ddd;
+      background: #f1f3f5;
+      border: 1px solid #d8dde3;
       padding: 12px 14px;
       line-height: 1.6;
       color: #333;
@@ -345,6 +415,10 @@ function generateReportHTML(tip: any): string {
       .page { padding: 20px 28px; }
       .no-print { display: none !important; }
       .print-bar { display: none !important; }
+      .section, .model-grid, .probability-card, .transcript-box, .dispatch-box, .alert-box {
+        break-inside: avoid;
+        page-break-inside: avoid;
+      }
     }
   </style>
 </head>
@@ -364,6 +438,7 @@ function generateReportHTML(tip: any): string {
   <!-- ── Report Header ── -->
   <div class="report-header">
     <div>
+      <div class="wordmark">THREAT VECTOR</div>
       <div class="report-title">THREAT ASSESSMENT REPORT</div>
       <div class="report-subtitle">Threat Vector AI System &nbsp;·&nbsp; School Safety Command Center</div>
     </div>
@@ -379,6 +454,11 @@ function generateReportHTML(tip: any): string {
   <div class="meta-row">
     <span>Generated: <span class="meta-bold">${escHtml(generatedAt)}</span></span>
     <span>Classification: <span class="meta-bold" style="color:#cc0000;">FOR AUTHORIZED PERSONNEL ONLY</span></span>
+  </div>
+
+  <div class="urgency-banner">
+    <span>${escHtml(urgency)} URGENCY</span>
+    <span>${escHtml(safeStr(tip.ai_recommended_action, 'Immediate review')).replace(/_/g, ' ')}</span>
   </div>
 
   <hr class="thin" />
@@ -436,6 +516,16 @@ function generateReportHTML(tip: any): string {
   <!-- ── 3. Multi-Model Analysis ── -->
   <div class="section">
     <div class="section-title">3 &nbsp;· &nbsp;Multi-Model Analysis</div>
+    <div class="probability-card">
+      <div class="probability-row">
+        <div class="probability-label">Bayesian Probability</div>
+        <div class="probability-value">${tip.bayes_probability_pct != null ? `${escHtml(String(tip.bayes_probability_pct))}%` : '—'}</div>
+      </div>
+      <div class="probability-track"><div class="probability-fill"></div></div>
+      <div style="margin-top:6px;font-size:8pt;color:#666;">
+        Confidence interval: ${tip.bayes_ci_low_pct != null ? escHtml(String(tip.bayes_ci_low_pct)) : '—'}% to ${tip.bayes_ci_high_pct != null ? escHtml(String(tip.bayes_ci_high_pct)) : '—'}%
+      </div>
+    </div>
     <div class="model-grid">
       <div class="model-box">
         <div class="model-name">Claude (Anthropic)</div>
@@ -446,15 +536,12 @@ function generateReportHTML(tip: any): string {
         <div class="model-val">${escHtml(safeNum(tip.gemini_level))} / 5</div>
       </div>
       <div class="model-box">
-        <div class="model-name">Bayesian Probability</div>
+        <div class="model-name">Bayesian</div>
         <div class="model-val">${tip.bayes_probability_pct != null ? `${tip.bayes_probability_pct}%` : '—'}</div>
       </div>
-      <div class="model-box">
-        <div class="model-name">Consensus</div>
-        <div class="model-val ${tip.consensus ? 'consensus-yes' : tip.consensus === false ? 'consensus-no' : ''}">
-          ${tip.consensus === true ? 'CONFIRMED' : tip.consensus === false ? 'DIVERGENT' : '—'}
-        </div>
-      </div>
+    </div>
+    <div style="border:1px solid #ddd;padding:8px 10px;margin-bottom:8px;font-size:10pt;font-weight:800;color:${tip.consensus ? '#1a7a3a' : tip.consensus === false ? '#b05000' : '#555'};">
+      Consensus: ${tip.consensus === true ? 'CONFIRMED' : tip.consensus === false ? 'DIVERGENT' : 'PENDING'}
     </div>
     ${tip.gemini_reasoning ? `
     <div>
@@ -586,6 +673,7 @@ function generateReportHTML(tip: any): string {
     <div class="footer-right">
       <div style="font-weight:700;color:#cc0000;">CONFIDENTIAL</div>
       <div>For Authorized Personnel Only</div>
+      <div>Page 1 of 1</div>
       <div>Do not distribute or reproduce without authorization</div>
     </div>
   </div>

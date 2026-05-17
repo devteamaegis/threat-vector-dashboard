@@ -46,3 +46,15 @@ export type Tip = {
   bayes_top_drivers?: Array<{ feature: string; keyword: string; ratio: number }> | null
   three_model_consensus?: boolean | null
 }
+
+export type AttendanceLog = {
+  id: string
+  call_id?: string | null
+  school_name?: string | null
+  student_name?: string | null
+  teacher_name?: string | null
+  grade?: string | null
+  absence_date?: string | null
+  reason?: string | null
+  submitted_at: string
+}
