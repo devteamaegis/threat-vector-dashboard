@@ -4,12 +4,16 @@ import dynamic from 'next/dynamic'
 import { useEffect, useRef, useState, useCallback } from 'react'
 import { supabase, type Tip } from '@/lib/supabase'
 import type { OrbMode } from '@/components/ClaudiaOrb'
+import { useLang } from '@/lib/i18n'
 
 const ClaudiaOrb          = dynamic(() => import('@/components/ClaudiaOrb'),          { ssr: false })
 const ThreatGraph         = dynamic(() => import('@/components/ThreatGraph'),         { ssr: false })
+const ThreatHeatmap       = dynamic(() => import('@/components/ThreatHeatmap'),       { ssr: false })
 const ThemeToggle         = dynamic(() => import('@/components/ThemeToggle'),         { ssr: false })
+const LanguageToggle      = dynamic(() => import('@/components/LanguageToggle'),      { ssr: false })
 const PipelineView        = dynamic(() => import('@/components/PipelineView'),        { ssr: false })
 const ThreatBreakdownModal = dynamic(() => import('@/components/ThreatBreakdownModal'), { ssr: false })
+const SupermemoryPanel    = dynamic(() => import('@/components/SupermemoryPanel'),    { ssr: false })
 
 import {
   IconWeapon, IconBullying, IconDrugs, IconThreat, IconSelfHarm,
@@ -1011,8 +1015,19 @@ function TipDrawer({ tip, onClose, onStatusChange, onAnalyze }: { tip: Tip; onCl
                 <p className="text-[10px] text-zinc-400 mt-2 italic">{tip.gemini_reasoning}</p>
               )}
               {tip.multilingual_call && tip.caller_language && (
-                <div className="mt-2 pt-2 border-t text-[10px] text-indigo-500" style={{ borderColor: 'var(--border)' }}>
-                  🌐 Originally in {tip.caller_language} - auto-translated by Gemini Live
+                <div className="mt-2 pt-2 border-t" style={{ borderColor: 'var(--border)' }}>
+                  <div className="text-[10px] text-indigo-500 mb-1.5">
+                    🌐 Originally in {tip.caller_language} · auto-translated
+                  </div>
+                  {tip.english_translation ? (
+                    <div className="rounded-md p-2 text-[11px] leading-relaxed"
+                      style={{ background: 'var(--surface-3)', border: '1px solid var(--border)' }}>
+                      <div className="text-[9px] uppercase tracking-wider text-zinc-500 mb-1">English translation</div>
+                      <div className="text-[var(--foreground-2)] italic">{tip.english_translation}</div>
+                    </div>
+                  ) : (
+                    <TranslateOnDemand tip={tip} />
+                  )}
                 </div>
               )}
             </div>
@@ -1213,11 +1228,109 @@ function LiveCounter() {
   )
 }
 
+// Translate-on-demand: shown on tips that came in before translation was wired,
+// or when the auto-translate call failed at ingest time.
+function TranslateOnDemand({ tip }: { tip: Tip }) {
+  const [translated, setTranslated] = useState<string | null>(null)
+  const [loading, setLoading] = useState(false)
+  const [err, setErr] = useState<string | null>(null)
+
+  async function go() {
+    setLoading(true); setErr(null)
+    try {
+      const r = await fetch('/api/translate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ text: tip.description ?? '', target: 'en' }),
+      })
+      const data = await r.json()
+      if (!r.ok) { setErr(data.error ?? 'failed'); return }
+      setTranslated(String(data.translated ?? ''))
+    } catch (e) {
+      setErr(String(e))
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  if (translated) {
+    return (
+      <div className="rounded-md p-2 text-[11px] leading-relaxed"
+        style={{ background: 'var(--surface-3)', border: '1px solid var(--border)' }}>
+        <div className="text-[9px] uppercase tracking-wider text-zinc-500 mb-1">English translation</div>
+        <div className="text-[var(--foreground-2)] italic">{translated}</div>
+      </div>
+    )
+  }
+  return (
+    <button onClick={go} disabled={loading}
+      className="text-[10px] font-bold uppercase tracking-wider px-2 py-1 rounded border border-indigo-500/40 text-indigo-400 hover:bg-indigo-500/10">
+      {loading ? 'Translating…' : err ? `Retry (${err})` : 'Translate to English'}
+    </button>
+  )
+}
+
+// Realistic sample student texts — randomised so demo replays don't feel canned.
+const SMS_SAMPLES: { transcript: string; school: string; lang: string }[] = [
+  { transcript: "There is a fight starting in the cafeteria right now. Multiple kids. One of them has a knife. Please hurry, we are scared.", school: 'Westbrook Academy', lang: 'English' },
+  { transcript: "Hay un hombre extraño cerca de la entrada trasera. Lleva veinte minutos parado allí. No parece un padre. Tengo miedo.", school: 'Lincoln Middle School', lang: 'Spanish' },
+  { transcript: "A kid in my grade has been telling everyone he is bringing a gun tomorrow. He showed a photo on snap. Multiple people saw it. Please do something.", school: 'Westbrook Academy', lang: 'English' },
+  { transcript: "Group of boys keep harassing my friend after school. They follow her home. She is afraid to come to school. This has been going on for weeks.", school: 'Roosevelt High', lang: 'English' },
+  { transcript: "Someone wrote a threat on the bathroom wall about shooting up the school next week. I have a photo of it.", school: 'Lincoln Middle School', lang: 'English' },
+]
+
+function SimulateSmsButton() {
+  const [sending, setSending] = useState(false)
+  const [lastResult, setLastResult] = useState<string | null>(null)
+
+  async function send() {
+    if (sending) return
+    setSending(true); setLastResult(null)
+    const sample = SMS_SAMPLES[Math.floor(Math.random() * SMS_SAMPLES.length)]
+    try {
+      const r = await fetch('/api/inbound-tip', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          transcript: sample.transcript,
+          school_name: sample.school,
+          caller_language: sample.lang,
+          source: 'sms',
+          From: '+1512555' + Math.floor(1000 + Math.random() * 9000),
+        }),
+      })
+      const data = await r.json()
+      if (r.ok) setLastResult(`Level ${data.level} · μ=${data.bayes?.mean?.toFixed(2)}`)
+      else setLastResult(`error: ${data.error ?? r.status}`)
+    } catch (err) {
+      setLastResult(`error: ${String(err)}`)
+    } finally {
+      setSending(false)
+      setTimeout(() => setLastResult(null), 4000)
+    }
+  }
+
+  return (
+    <button onClick={send} disabled={sending}
+      className={`flex items-center gap-1.5 text-[10px] font-semibold uppercase px-3 py-1.5 rounded-md border transition-all tracking-widest ${
+        sending
+          ? 'border-[var(--border)] text-[var(--muted)] cursor-not-allowed'
+          : 'border-orange-500/60 text-orange-400 bg-orange-950/20 hover:bg-orange-950/40 hover:border-orange-500'
+      }`}
+      title="POST a sample student-SMS tip to /api/inbound-tip — runs the Bayesian pipeline and inserts into Supabase.">
+      {sending ? <><span className="w-1.5 h-1.5 rounded-full bg-orange-600 animate-pulse" />Triaging…</>
+       : lastResult ? <><span>✓</span>{lastResult}</>
+       : <><span>💬</span>Simulate SMS</>}
+    </button>
+  )
+}
+
 // ─── Main Dashboard ────────────────────────────────────────────────────────────
 
-type TabId = 'command' | 'intelligence' | 'pipeline'
+type TabId = 'command' | 'intelligence' | 'pipeline' | 'heatmap'
 
 export default function Dashboard() {
+  const { t } = useLang()
   const [activeTab, setActiveTab] = useState<TabId>('command')
   const [tips, setTips]           = useState<Tip[]>([])
   const [loading, setLoading]     = useState(true)
@@ -1437,6 +1550,13 @@ export default function Dashboard() {
 
   const crossSchoolAlert = tips.find(t => t.cross_school_alert && new Date(t.submitted_at ?? t.created_at).getTime() > Date.now() - 7 * 24 * 60 * 60 * 1000)?.cross_school_alert
 
+  // GPS tips — for heatmap tab badge
+  const gpsTips = tips.filter(t => typeof t.call_lat === 'number' && typeof t.call_lng === 'number')
+  const hasHighGps = gpsTips.some(t => {
+    const level = t.threat_level != null ? Math.round(t.threat_level) : t.ai_triage_score != null ? Math.round(t.ai_triage_score / 2) : t.urgency === 'critical' ? 5 : t.urgency === 'high' ? 4 : 1
+    return level >= 4
+  })
+
   // Keyboard shortcuts — placed after filtered/runDemo declarations to avoid hoisting issues
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -1553,18 +1673,25 @@ export default function Dashboard() {
           {/* Tab switcher */}
           <div className="flex items-center gap-0.5 p-0.5 rounded-lg" style={{ background: 'var(--surface-2)', border: '1px solid rgba(255,255,255,0.05)' }}>
             {([
-              { id: 'command',      label: 'Command Center',      icon: <IconGrid size={12} /> },
-              { id: 'intelligence', label: 'Threat Intelligence', icon: <IconEye  size={12} /> },
-              { id: 'pipeline',     label: 'Data Pipeline',       icon: <IconFlow size={12} /> },
+              { id: 'command',      label: t('header.tab.live'),     icon: <IconGrid size={12} /> },
+              { id: 'intelligence', label: t('header.tab.graph'),    icon: <IconEye  size={12} /> },
+              { id: 'pipeline',     label: t('header.tab.pipeline'), icon: <IconFlow size={12} /> },
+              { id: 'heatmap',      label: t('header.tab.heatmap'),  icon: <IconGlobe size={12} /> },
             ] as { id: TabId; label: string; icon: React.ReactNode }[]).map(tab => (
               <button key={tab.id} onClick={() => setActiveTab(tab.id)}
-                className={`flex items-center gap-1.5 px-3 py-1 rounded-md text-[10px] font-semibold tracking-wide transition-all duration-200 ${
+                className={`relative flex items-center gap-1.5 px-3 py-1 rounded-md text-[10px] font-semibold tracking-wide transition-all duration-200 ${
                   activeTab === tab.id
                     ? 'bg-[var(--surface)] text-[var(--foreground)] shadow-sm border border-[var(--border)]'
                     : 'text-[var(--muted)] hover:text-[var(--foreground)]'
                 }`}>
                 <span className="flex items-center">{tab.icon}</span>
                 {tab.label}
+                {tab.id === 'heatmap' && gpsTips.length > 0 && (
+                  <span className={`ml-0.5 px-1 py-0.5 rounded font-mono font-black text-[8px] leading-none ${hasHighGps ? 'text-red-300 animate-pulse' : 'text-zinc-400'}`}
+                    style={{ background: hasHighGps ? 'rgba(239,68,68,0.2)' : 'rgba(255,255,255,0.08)', border: `1px solid ${hasHighGps ? 'rgba(239,68,68,0.3)' : 'rgba(255,255,255,0.1)'}` }}>
+                    {gpsTips.length}
+                  </span>
+                )}
               </button>
             ))}
           </div>
@@ -1572,20 +1699,26 @@ export default function Dashboard() {
 
         {/* Right: actions */}
         <div className="flex items-center gap-2.5">
+          <LanguageToggle />
           <ThemeToggle />
           <button onClick={() => setShowShortcuts(true)} className="w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-bold text-[var(--muted)] border border-[var(--border)] hover:text-[var(--foreground)] hover:bg-[var(--surface-2)] transition-colors">?</button>
           <LiveCounter />
+            <a href="/math" target="_blank" rel="noopener"
+              className="hidden md:flex items-center gap-1.5 text-[10px] font-semibold uppercase px-3 py-1.5 rounded-md border transition-all tracking-widest border-purple-500/60 text-purple-400 bg-purple-950/20 hover:bg-purple-950/40 hover:border-purple-500">
+              <span>∑</span>Math
+            </a>
             <button onClick={() => setShowTipModal(true)}
               className="flex items-center gap-1.5 text-[10px] font-semibold uppercase px-3 py-1.5 rounded-md border transition-all tracking-widest border-emerald-500/60 text-emerald-400 bg-emerald-950/20 hover:bg-emerald-950/40 hover:border-emerald-500">
-              <span>+</span>Submit Tip
+              <span>+</span>{t('action.submit.tip')}
             </button>
+            <SimulateSmsButton />
             <button onClick={runDemo} disabled={demoRunning}
               className={`flex items-center gap-1.5 text-[10px] font-semibold uppercase px-3 py-1.5 rounded-md border transition-all tracking-widest ${
                 demoRunning
                   ? 'border-[var(--border)] text-[var(--muted)] cursor-not-allowed'
                   : 'border-cyan-500/60 text-cyan-400 bg-cyan-950/20 hover:bg-cyan-950/40 hover:border-cyan-500'
               }`}>
-              {demoRunning ? <><span className="w-1.5 h-1.5 rounded-full bg-cyan-600 animate-pulse" />Processing…</> : <><span>📞</span>Demo Call</>}
+              {demoRunning ? <><span className="w-1.5 h-1.5 rounded-full bg-cyan-600 animate-pulse" />Processing…</> : <><span>📞</span>{t('action.demo')}</>}
             </button>
             {criticalFlash && (
               <span className="flex items-center gap-1.5 text-[10px] font-bold text-red-400 bg-red-950/50 border border-red-900/40 px-2.5 py-1 rounded-full uppercase tracking-widest animate-pulse">
@@ -1658,6 +1791,7 @@ export default function Dashboard() {
               <div className="flex flex-col gap-3">
                 <IntegrationStatus />
                 <CostTracker />
+                <SupermemoryPanel school={selected?.school_name ?? undefined} />
               </div>
             </div>
 
@@ -1784,6 +1918,13 @@ export default function Dashboard() {
         {activeTab === 'pipeline' && (
           <div className="relative z-10 flex-1 min-h-0 overflow-hidden">
             <PipelineView />
+          </div>
+        )}
+
+        {/* ── Tab: GPS Threat Heatmap ── */}
+        {activeTab === 'heatmap' && (
+          <div className="relative z-10 flex-1 min-h-0 overflow-hidden">
+            <ThreatHeatmap tips={tips} />
           </div>
         )}
 
