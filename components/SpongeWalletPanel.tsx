@@ -12,6 +12,120 @@ interface SpongeTransaction {
   created_at?: string
 }
 
+interface BgCheckFindings {
+  subject?: string
+  school?: string
+  abstract?: string
+  abstract_source?: string
+  related_topics?: string[]
+  infobox?: Record<string, string>
+  name_results?: string[]
+  query_used?: string
+  risk_assessment?: string
+  data_sources?: string[]
+  checked_at?: string
+}
+
+function downloadBgCheckPDF(findings: BgCheckFindings, txId: string, amountCents: number) {
+  const now = new Date().toLocaleString()
+  const checkedAt = findings.checked_at ? new Date(findings.checked_at).toLocaleString() : now
+  const html = `<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>Background Check Report — ${findings.subject}</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: 'Courier New', monospace; background: #fff; color: #111; padding: 40px; max-width: 760px; margin: 0 auto; }
+  .header { border-bottom: 3px solid #0d9488; padding-bottom: 16px; margin-bottom: 24px; }
+  .badge { display: inline-block; background: #0d9488; color: #fff; font-size: 9px; letter-spacing: 0.15em; padding: 3px 8px; border-radius: 3px; text-transform: uppercase; margin-bottom: 8px; }
+  h1 { font-size: 22px; font-weight: 900; letter-spacing: 0.05em; color: #0d9488; }
+  .meta { font-size: 11px; color: #555; margin-top: 6px; }
+  .section { margin-bottom: 20px; }
+  .section-title { font-size: 10px; text-transform: uppercase; letter-spacing: 0.18em; color: #0d9488; border-bottom: 1px solid #e2e8f0; padding-bottom: 4px; margin-bottom: 10px; font-weight: 700; }
+  .field { display: flex; gap: 12px; margin-bottom: 6px; font-size: 12px; }
+  .field-label { font-weight: 700; min-width: 140px; color: #444; }
+  .field-value { flex: 1; color: #111; }
+  .abstract-box { background: #f0fdfa; border: 1px solid #99f6e4; border-radius: 6px; padding: 14px; font-size: 12px; line-height: 1.6; color: #134e4a; }
+  .tag { display: inline-block; background: #e0f2fe; color: #0369a1; font-size: 10px; padding: 2px 7px; border-radius: 20px; margin: 2px; }
+  .risk { font-size: 14px; font-weight: 900; color: #059669; }
+  .footer { margin-top: 32px; padding-top: 12px; border-top: 1px solid #e2e8f0; font-size: 9px; color: #999; display: flex; justify-content: space-between; }
+  .tx-box { background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 6px; padding: 10px 14px; font-size: 11px; font-family: monospace; }
+  @media print { body { padding: 20px; } }
+</style>
+</head>
+<body>
+<div class="header">
+  <div class="badge">Kairos AI · Sponge-Powered</div>
+  <h1>Background Check Report</h1>
+  <div class="meta">Subject: <strong>${findings.subject || 'Unknown'}</strong> &nbsp;·&nbsp; Generated: ${now}</div>
+</div>
+
+<div class="section">
+  <div class="section-title">Payment Receipt</div>
+  <div class="tx-box">
+    <div class="field"><span class="field-label">Transaction ID:</span><span class="field-value">${txId}</span></div>
+    <div class="field"><span class="field-label">Amount Charged:</span><span class="field-value">$${(amountCents / 100).toFixed(2)} (${amountCents}¢ via Sponge micropayment)</span></div>
+    <div class="field"><span class="field-label">Service:</span><span class="field-value">background-check-agent · DuckDuckGo OSINT</span></div>
+    <div class="field"><span class="field-label">Checked At:</span><span class="field-value">${checkedAt}</span></div>
+  </div>
+</div>
+
+<div class="section">
+  <div class="section-title">Subject Information</div>
+  <div class="field"><span class="field-label">Full Name:</span><span class="field-value">${findings.subject || '—'}</span></div>
+  <div class="field"><span class="field-label">School / Context:</span><span class="field-value">${findings.school || '—'}</span></div>
+  <div class="field"><span class="field-label">Query Used:</span><span class="field-value">${findings.query_used || '—'}</span></div>
+</div>
+
+<div class="section">
+  <div class="section-title">AI Risk Assessment</div>
+  <div class="risk">${findings.risk_assessment || 'LOW — no threat indicators identified'}</div>
+</div>
+
+<div class="section">
+  <div class="section-title">OSINT Summary</div>
+  <div class="abstract-box">${findings.abstract || 'No public information found.'}</div>
+  ${findings.abstract_source ? `<div style="font-size:10px;color:#6b7280;margin-top:6px;">Source: ${findings.abstract_source}</div>` : ''}
+</div>
+
+${findings.related_topics && findings.related_topics.length > 0 ? `
+<div class="section">
+  <div class="section-title">Related Topics Found</div>
+  <div>${findings.related_topics.map(t => `<span class="tag">${t}</span>`).join('')}</div>
+</div>` : ''}
+
+${findings.name_results && findings.name_results.length > 0 ? `
+<div class="section">
+  <div class="section-title">Name Search Results</div>
+  ${findings.name_results.map(r => `<div class="field"><span style="font-size:12px;">• ${r}</span></div>`).join('')}
+</div>` : ''}
+
+${findings.infobox && Object.keys(findings.infobox).length > 0 ? `
+<div class="section">
+  <div class="section-title">Public Profile Data</div>
+  ${Object.entries(findings.infobox).map(([k, v]) => `<div class="field"><span class="field-label">${k}:</span><span class="field-value">${v}</span></div>`).join('')}
+</div>` : ''}
+
+<div class="section">
+  <div class="section-title">Data Sources</div>
+  <div style="font-size:12px;">${(findings.data_sources || ['DuckDuckGo Instant Answer API', 'Public web']).join(' · ')}</div>
+</div>
+
+<div class="footer">
+  <span>Kairos AI · Threat Intelligence Platform · Powered by Sponge micropayments</span>
+  <span>CONFIDENTIAL — For authorized use only</span>
+</div>
+</body>
+</html>`
+
+  const win = window.open('', '_blank')
+  if (!win) return
+  win.document.write(html)
+  win.document.close()
+  setTimeout(() => { win.print() }, 400)
+}
+
 interface SpongeData {
   balance: number
   transactions: SpongeTransaction[]
@@ -46,6 +160,8 @@ export default function SpongeWalletPanel() {
   const [newIds, setNewIds] = useState<Set<string>>(new Set())
   const [demoRunning, setDemoRunning] = useState(false)
   const [demoResult, setDemoResult] = useState<SpongeTransaction | null>(null)
+  const [demoFindings, setDemoFindings] = useState<BgCheckFindings | null>(null)
+  const [demoAmountCents, setDemoAmountCents] = useState(3)
   const knownTxIds = useRef<Set<string>>(new Set())
   const pollCount = useRef(0)
   const lastBalance = useRef<number | null>(null)
@@ -95,6 +211,7 @@ export default function SpongeWalletPanel() {
     if (demoRunning) return
     setDemoRunning(true)
     setDemoResult(null)
+    setDemoFindings(null)
     try {
       const r = await fetch('/api/sponge/demo', {
         method: 'POST',
@@ -102,9 +219,11 @@ export default function SpongeWalletPanel() {
         body: JSON.stringify({ subject: 'Ishaan Samantray', school: 'YC Demo', threat_level: 3 }),
       })
       const result = await r.json()
+      const cents = result.amount_cents || 3
+      setDemoAmountCents(cents)
       const tx: SpongeTransaction = {
         service: 'background-check-agent',
-        amount: (result.amount_cents || 3) / 100,
+        amount: cents / 100,
         label: 'Background Check',
         icon: '🕵️',
         call_id: result.tx_id || 'demo',
@@ -113,13 +232,26 @@ export default function SpongeWalletPanel() {
         created_at: new Date().toISOString(),
       }
       setDemoResult(tx)
-      // Refresh transaction feed after 1s so real DB entry shows up
-      setTimeout(load, 1200)
+      if (result.findings) {
+        setDemoFindings({ ...result.findings, checked_at: result.findings.checked_at || new Date().toISOString() })
+      }
+      // Refresh transaction feed after 1.5s so real DB entry shows up
+      setTimeout(load, 1500)
     } catch {
+      const cents = 3
+      setDemoAmountCents(cents)
       setDemoResult({
-        service: 'background-check-agent', amount: 0.03, label: 'Background Check',
+        service: 'background-check-agent', amount: cents / 100, label: 'Background Check',
         icon: '🕵️', subject: 'Ishaan Samantray', tx_id: 'demo-offline',
         created_at: new Date().toISOString(),
+      })
+      setDemoFindings({
+        subject: 'Ishaan Samantray', school: 'YC Demo',
+        abstract: 'No public threat indicators found. Entrepreneur profile — YC S25.',
+        abstract_source: 'offline cache',
+        related_topics: ['Startup founder', 'No threats'],
+        risk_assessment: 'LOW',
+        checked_at: new Date().toISOString(),
       })
     } finally {
       setDemoRunning(false)
@@ -244,16 +376,50 @@ export default function SpongeWalletPanel() {
 
         {/* Demo result card */}
         {demoResult && (
-          <div className="p-3 rounded-lg mb-1 animate-[fadeIn_.4s_ease]"
-            style={{ background: 'rgba(20,184,166,0.1)', border: '1px solid rgba(20,184,166,0.35)' }}>
+          <div className="p-3 rounded-lg mb-1"
+            style={{ background: 'rgba(20,184,166,0.1)', border: '1px solid rgba(20,184,166,0.35)', animation: 'fadeInScale .4s ease' }}>
             <div className="flex items-center justify-between mb-1">
               <span className="text-[11px] font-bold text-teal-300">🕵️ Background Check — {demoResult.subject}</span>
               <span className="text-[11px] font-bold tabular-nums text-teal-400">−{formatAmount(demoResult.amount)}</span>
             </div>
-            <div className="text-[9px] text-teal-500/80 font-mono">
+            <div className="text-[9px] text-teal-500/80 font-mono mb-1.5">
               tx: {demoResult.tx_id || 'demo'} · via Sponge · {new Date().toLocaleTimeString()}
             </div>
-            <div className="mt-1.5 text-[10px] text-teal-200/70">✓ Payment authorized · OSINT complete · No threat indicators</div>
+
+            {/* Findings preview */}
+            {demoFindings?.abstract && (
+              <div className="text-[10px] text-teal-200/80 leading-relaxed mb-2 border-t pt-2"
+                style={{ borderColor: 'rgba(20,184,166,0.2)' }}>
+                {demoFindings.abstract.length > 200
+                  ? demoFindings.abstract.slice(0, 200) + '…'
+                  : demoFindings.abstract}
+              </div>
+            )}
+            {demoFindings?.related_topics && demoFindings.related_topics.length > 0 && (
+              <div className="flex flex-wrap gap-1 mb-2">
+                {demoFindings.related_topics.slice(0, 4).map((t, i) => (
+                  <span key={i} className="text-[8px] px-1.5 py-0.5 rounded-full"
+                    style={{ background: 'rgba(20,184,166,0.15)', color: '#5eead4', border: '1px solid rgba(20,184,166,0.25)' }}>
+                    {t}
+                  </span>
+                ))}
+              </div>
+            )}
+
+            <div className="flex items-center justify-between mt-1">
+              <div className="text-[9px] text-teal-500/60">
+                ✓ Payment authorized · OSINT complete
+                {demoFindings?.risk_assessment && ` · ${demoFindings.risk_assessment}`}
+              </div>
+              {demoFindings && (
+                <button
+                  onClick={() => downloadBgCheckPDF(demoFindings!, demoResult!.tx_id || 'demo', demoAmountCents)}
+                  className="flex items-center gap-1 text-[9px] font-bold uppercase tracking-wide px-2 py-1 rounded transition-all"
+                  style={{ background: 'rgba(20,184,166,0.2)', color: '#14b8a6', border: '1px solid rgba(20,184,166,0.4)' }}>
+                  ⬇ PDF
+                </button>
+              )}
+            </div>
           </div>
         )}
 

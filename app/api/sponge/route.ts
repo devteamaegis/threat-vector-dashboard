@@ -1,28 +1,73 @@
 import { NextResponse } from 'next/server'
 
 const BACKEND = process.env.BACKEND_URL || 'http://localhost:8001'
-
-// Demo fallback when backend is offline — always shows the agent economy story
-const DEMO_DATA = {
-  balance: 4.73,
-  transactions: [
-    { service: 'browser-use-osint', amount: 0.02, label: 'OSINT Search', icon: '🔍', call_id: 'demo-001' },
-    { service: 'twilio-sms',        amount: 0.01, label: 'SMS Alert',    icon: '📱', call_id: 'demo-001' },
-    { service: 'agentmail-brief',   amount: 0.01, label: 'Email Brief',  icon: '✉️', call_id: 'demo-001' },
-    { service: 'gemini-verify',     amount: 0.03, label: 'Gemini Verify',icon: '✦',  call_id: 'demo-002' },
-    { service: 'browser-use-osint', amount: 0.02, label: 'OSINT Search', icon: '🔍', call_id: 'demo-002' },
-    { service: 'twilio-sms',        amount: 0.01, label: 'SMS Alert',    icon: '📱', call_id: 'demo-002' },
-    { service: 'supermemory-store', amount: 0.005,label: 'Memory Store', icon: '🧬', call_id: 'demo-003' },
-    { service: 'agentmail-brief',   amount: 0.01, label: 'Email Brief',  icon: '✉️', call_id: 'demo-003' },
-  ],
-}
+const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL
+const SUPABASE_ANON_KEY = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
 
 export async function GET() {
+  // 1. Try Railway backend (has Sponge API access + balance)
   try {
     const r = await fetch(`${BACKEND}/api/sponge/wallet`, { cache: 'no-store' })
-    if (!r.ok) throw new Error('backend unreachable')
-    return NextResponse.json(await r.json())
-  } catch {
-    return NextResponse.json(DEMO_DATA)
+    if (r.ok) {
+      const data = await r.json()
+      // If backend returned real data (non-demo transactions), use it
+      const txs = data.transactions ?? []
+      const hasRealData = txs.some((t: any) => t.tx_id && !t.tx_id.startsWith('demo'))
+      if (hasRealData || txs.length === 0) {
+        return NextResponse.json(data)
+      }
+    }
+  } catch { /* fall through */ }
+
+  // 2. Query Supabase sponge_transactions directly (anon key, RLS allows SELECT)
+  if (SUPABASE_URL && SUPABASE_ANON_KEY) {
+    try {
+      const [txRes, tipsRes] = await Promise.all([
+        fetch(
+          `${SUPABASE_URL}/rest/v1/sponge_transactions?order=created_at.desc&limit=30`,
+          { headers: { apikey: SUPABASE_ANON_KEY, Authorization: `Bearer ${SUPABASE_ANON_KEY}` }, cache: 'no-store' }
+        ),
+        fetch(
+          `${SUPABASE_URL}/rest/v1/tips?select=ai_triage_score,school_name&order=created_at.desc&limit=1`,
+          { headers: { apikey: SUPABASE_ANON_KEY, Authorization: `Bearer ${SUPABASE_ANON_KEY}` }, cache: 'no-store' }
+        ),
+      ])
+
+      if (txRes.ok) {
+        const rows: any[] = await txRes.json()
+        const transactions = rows.map(row => ({
+          service:    row.service ?? 'unknown',
+          amount:     (row.amount_cents ?? 0) / 100,
+          label:      SERVICE_LABELS[row.service as string] ?? row.service,
+          icon:       SERVICE_ICONS[row.service as string] ?? '💰',
+          call_id:    row.call_id,
+          subject:    row.subject,
+          tx_id:      row.tx_id,
+          created_at: row.created_at,
+        }))
+        const totalSpend = transactions.reduce((s, t) => s + t.amount, 0)
+        return NextResponse.json({ balance: 0, transactions, totalSpend })
+      }
+    } catch { /* fall through */ }
   }
+
+  // 3. No data at all — return empty (never show fake transactions)
+  return NextResponse.json({ balance: 0, transactions: [] })
+}
+
+const SERVICE_LABELS: Record<string, string> = {
+  'background-check-agent': 'Background Check',
+  'browser-use-osint':      'OSINT Search',
+  'twilio-sms':             'SMS Alert',
+  'agentmail-brief':        'Email Brief',
+  'gemini-verify':          'Gemini Verify',
+  'supermemory-store':      'Memory Store',
+}
+const SERVICE_ICONS: Record<string, string> = {
+  'background-check-agent': '🕵️',
+  'browser-use-osint':      '🔍',
+  'twilio-sms':             '📱',
+  'agentmail-brief':        '✉️',
+  'gemini-verify':          '✦',
+  'supermemory-store':      '🧬',
 }
