@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 
-const BACKEND = process.env.BACKEND_URL || 'http://localhost:8001'
+const BACKEND = process.env.BACKEND_URL || 'https://threat-vector-production.up.railway.app'
 
 export async function POST(req: NextRequest) {
   try {

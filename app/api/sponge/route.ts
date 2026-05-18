@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server'
 
-const BACKEND = process.env.BACKEND_URL || 'http://localhost:8001'
+const BACKEND = process.env.BACKEND_URL || 'https://threat-vector-production.up.railway.app'
 const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL
 const SUPABASE_ANON_KEY = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
 

@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server'
 
 export async function GET() {
-  const backendUrl = process.env.BACKEND_URL || 'http://localhost:8001'
+  const backendUrl = process.env.BACKEND_URL || 'https://threat-vector-production.up.railway.app'
   try {
     const r = await fetch(`${backendUrl}/health`, { next: { revalidate: 30 } })
     if (!r.ok) throw new Error('backend unreachable')
