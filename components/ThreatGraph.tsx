@@ -569,6 +569,38 @@ export default function ThreatGraph({ tips, freshIds = new Set() }: Props) {
       {selected && (
         <NodePopup node={selected} pos={popupPos} onClose={() => setSelected(null)} />
       )}
+
+      {/* Supermemory attribution bar */}
+      <div className="absolute bottom-0 left-0 right-0 z-20 flex items-center justify-between px-5 py-2.5"
+        style={{
+          background: 'rgba(6,8,13,0.88)',
+          borderTop: '1px solid rgba(168,85,247,0.2)',
+          backdropFilter: 'blur(12px)',
+        }}>
+        <div className="flex items-center gap-2.5">
+          <div className="w-2 h-2 rounded-full bg-purple-400 animate-pulse" />
+          <span className="text-[10px] font-bold uppercase tracking-[0.18em] text-purple-300">
+            Cross-school pattern detection powered by Supermemory
+          </span>
+        </div>
+        <div className="flex items-center gap-4">
+          <div className="flex items-center gap-3 text-[9px] text-slate-500">
+            <span className="flex items-center gap-1.5">
+              <span style={{ color: '#f97316', fontSize: 10 }}>●</span>
+              <span>Orange links = Supermemory semantic match across schools</span>
+            </span>
+            <span className="flex items-center gap-1.5">
+              <span style={{ color: '#ef4444', fontSize: 10 }}>●</span>
+              <span>Red nodes = cross-school alert active</span>
+            </span>
+          </div>
+          <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full"
+            style={{ background: 'rgba(168,85,247,0.1)', border: '1px solid rgba(168,85,247,0.25)' }}>
+            <span className="text-[9px] font-semibold text-purple-300">🧬</span>
+            <span className="text-[9px] font-bold uppercase tracking-widest text-purple-400">Supermemory</span>
+          </div>
+        </div>
+      </div>
     </div>
   )
 }
