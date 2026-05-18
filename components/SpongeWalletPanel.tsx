@@ -12,16 +12,26 @@ interface SpongeTransaction {
   created_at?: string
 }
 
+interface CourtRecord { case_name?: string; court?: string; date?: string; snippet?: string; url?: string }
+interface WebResult { title?: string; url?: string; snippet?: string }
+
 interface BgCheckFindings {
   subject?: string
   school?: string
   abstract?: string
   abstract_source?: string
   related_topics?: string[]
+  court_records?: CourtRecord[]
+  bing_results?: WebResult[]
+  web_results?: WebResult[]
+  browser_summary?: string
+  has_court_records?: boolean
+  has_criminal_signals?: boolean
   infobox?: Record<string, string>
   name_results?: string[]
   query_used?: string
   risk_assessment?: string
+  sources_searched?: string[]
   data_sources?: string[]
   checked_at?: string
 }
@@ -101,6 +111,39 @@ ${findings.name_results && findings.name_results.length > 0 ? `
   ${findings.name_results.map(r => `<div class="field"><span style="font-size:12px;">• ${r}</span></div>`).join('')}
 </div>` : ''}
 
+${findings.court_records && findings.court_records.length > 0 ? `
+<div class="section">
+  <div class="section-title" style="color:#dc2626">⚖️ Court Records Found (CourtListener)</div>
+  ${findings.court_records.map(c => `
+    <div style="background:#fff5f5;border:1px solid #fca5a5;border-radius:5px;padding:8px 12px;margin-bottom:6px;font-size:11px;">
+      <strong>${c.case_name || 'Unknown Case'}</strong><br>
+      Court: ${c.court || '—'} · Filed: ${c.date ? c.date.slice(0,10) : '—'}
+      ${c.snippet ? `<br><span style="color:#555">${c.snippet.slice(0,200)}</span>` : ''}
+      ${c.url ? `<br><a href="${c.url}" style="color:#0d9488;font-size:9px">${c.url.slice(0,60)}…</a>` : ''}
+    </div>`).join('')}
+</div>` : `
+<div class="section">
+  <div class="section-title">⚖️ Court Records (CourtListener)</div>
+  <p style="font-size:12px;color:#6b7280;font-style:italic;">No court records found in federal/state appellate databases.</p>
+</div>`}
+
+${findings.bing_results && findings.bing_results.length > 0 ? `
+<div class="section">
+  <div class="section-title">🔍 Criminal Record Web Search (Bing)</div>
+  ${findings.bing_results.map(r => `
+    <div style="margin-bottom:8px;font-size:11px;">
+      <strong>${r.title || '—'}</strong>
+      ${r.snippet ? `<br><span style="color:#555">${r.snippet.slice(0,200)}</span>` : ''}
+      ${r.url ? `<br><a href="${r.url}" style="color:#0d9488;font-size:9px">${r.url.slice(0,70)}</a>` : ''}
+    </div>`).join('')}
+</div>` : ''}
+
+${findings.browser_summary && findings.browser_summary.length > 10 ? `
+<div class="section">
+  <div class="section-title">🤖 Browser-Use Court Portal Agent</div>
+  <div class="abstract-box" style="background:#f0f9ff;border-color:#bae6fd;color:#0c4a6e">${findings.browser_summary.replace(/\[Browser-Use[^\]]*\]\s*/,'')}</div>
+</div>` : ''}
+
 ${findings.infobox && Object.keys(findings.infobox).length > 0 ? `
 <div class="section">
   <div class="section-title">Public Profile Data</div>
@@ -108,8 +151,12 @@ ${findings.infobox && Object.keys(findings.infobox).length > 0 ? `
 </div>` : ''}
 
 <div class="section">
-  <div class="section-title">Data Sources</div>
-  <div style="font-size:12px;">${(findings.data_sources || ['DuckDuckGo Instant Answer API', 'Public web']).join(' · ')}</div>
+  <div class="section-title">Sources Searched</div>
+  <div style="font-size:12px;line-height:1.8">${
+    (findings.sources_searched || findings.data_sources || ['DuckDuckGo', 'Public web'])
+      .map((s: string) => `✓ ${s}`).join('<br>')
+  }</div>
+  <p style="font-size:10px;color:#9ca3af;margin-top:8px;">All sources are publicly available. No authenticated or private databases were accessed.</p>
 </div>
 
 <div class="footer">
