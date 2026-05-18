@@ -1659,7 +1659,8 @@ export default function Dashboard() {
             bayesCiLow={analysisTip.bayes_ci_low_pct}
             bayesCiHigh={analysisTip.bayes_ci_high_pct}
             bayesDrivers={analysisTip.bayes_top_drivers}
-            threatLevel={analysisTip.ai_triage_score != null ? Math.round(analysisTip.ai_triage_score / 2) : null}
+            threatLevel={analysisTip.ai_triage_score != null ? Math.round(analysisTip.ai_triage_score / 2) : analysisTip.threat_level ?? null}
+            geminiLevel={analysisTip.gemini_level ?? null}
             callerEmotion={analysisTip.caller_emotion}
             callerTone={analysisTip.caller_tone}
             threeModelConsensus={analysisTip.three_model_consensus}

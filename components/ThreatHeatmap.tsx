@@ -593,6 +593,43 @@ export default function ThreatHeatmap({
             )
           })}
 
+          {/* ── Mentioned address pins (geocoded from spoken transcript) ── */}
+          {points.filter(p => typeof p.tip.mentioned_lat === 'number' && typeof p.tip.mentioned_lng === 'number').map(p => {
+            const mlat = p.tip.mentioned_lat as number
+            const mlng = p.tip.mentioned_lng as number
+            const color = '#ef4444'  // always red — this is the address referenced in the threat
+            return (
+              <Marker key={`mentioned-${p.tip.id}`} latitude={mlat} longitude={mlng} anchor="center">
+                <button
+                  onClick={() => setSelected(p)}
+                  className="relative flex items-center justify-center rounded-full"
+                  style={{ width: 18, height: 18, background: color, border: '2.5px solid rgba(255,255,255,0.85)', boxShadow: `0 0 16px ${color}80` }}
+                  aria-label={`Mentioned address in call from ${p.tip.school_name ?? 'unknown'}`}
+                >
+                  <span className="absolute inset-0 rounded-full border border-red-400" style={{ animation: 'heatPulse 1.4s infinite' }} />
+                  <span style={{
+                    position: 'absolute',
+                    top: -16,
+                    left: '50%',
+                    transform: 'translateX(-50%)',
+                    background: 'rgba(0,0,0,0.82)',
+                    border: '1px solid rgba(239,68,68,0.45)',
+                    borderRadius: 3,
+                    padding: '1px 5px',
+                    fontSize: 7,
+                    fontWeight: 700,
+                    letterSpacing: '0.1em',
+                    color: '#fca5a5',
+                    whiteSpace: 'nowrap',
+                    pointerEvents: 'none',
+                  }}>
+                    📍 MENTIONED ADDRESS
+                  </span>
+                </button>
+              </Marker>
+            )
+          })}
+
           {layers.pins && points.flatMap(p => p.locations.map((location, i) => {
             const [lat, lng] = offsetCoord(p.lat, p.lng, `${p.tip.id}-${i}`, 30 + seededUnit(`${p.tip.id}-${location}`) * 70)
             const urgent = p.level >= 4 || p.tip.category === 'weapon' || p.tip.escalation_risk === 'imminent'
@@ -663,7 +700,11 @@ export default function ThreatHeatmap({
             </div>
             <div className="flex items-center gap-2">
               <div className="w-3 h-3 rounded-full border border-white/40 shrink-0" style={{ background: '#ef4444' }} />
-              <span className="text-[10px] text-zinc-300">Threat mentioned location</span>
+              <span className="text-[10px] text-zinc-300">School / inferred location</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <div className="w-3.5 h-3.5 rounded-full border-2 border-white/90 shrink-0" style={{ background: '#ef4444', boxShadow: '0 0 8px #ef444480' }} />
+              <span className="text-[10px] text-zinc-300">📍 Spoken address (geocoded)</span>
             </div>
             <div className="flex items-center gap-2">
               <div className="w-3.5 h-3.5 rotate-45 rounded-sm border border-white/30 shrink-0" style={{ background: '#f59e0b' }} />

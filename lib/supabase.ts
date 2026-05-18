@@ -54,6 +54,8 @@ export type Tip = {
   location_context?: string | null
   osint_findings?: string | null
   background_check_subject?: string | null
+  mentioned_lat?: number | null
+  mentioned_lng?: number | null
 }
 
 export type AttendanceLog = {

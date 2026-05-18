@@ -141,6 +141,7 @@ export interface ThreatBreakdownProps {
   bayesCiHigh?: number | null
   bayesDrivers?: Array<{ keyword: string; weight?: number; ratio?: number }> | null
   threatLevel?: number | null
+  geminiLevel?: number | null          // Gemini's independent threat level (1-5)
   callerEmotion?: string | null
   callerTone?: string | null
   threeModelConsensus?: boolean | null
@@ -180,7 +181,7 @@ function VerdictGauge({ pct, color }: { pct: number; color: string }) {
 // ── Main component ─────────────────────────────────────────────────────────────
 export default function ThreatBreakdownModal({
   transcript, englishTranslation, bayesProbPct, bayesCiLow, bayesCiHigh, bayesDrivers,
-  threatLevel, callerEmotion, callerTone, threeModelConsensus, schoolName,
+  threatLevel, geminiLevel, callerEmotion, callerTone, threeModelConsensus, schoolName,
   osintFindings, backgroundCheckSubject, onClose,
 }: ThreatBreakdownProps) {
   // For non-English calls: show the original transcript for display, but run all
@@ -222,6 +223,10 @@ export default function ThreatBreakdownModal({
   const ciHigh = bayesCiMeaningful ? bayesCiHigh! : Math.min(probPct + ciWidth, 100)
 
   const level    = threatLevel  ?? (probPct>80?5:probPct>55?4:probPct>30?3:probPct>10?2:1)
+  // Derive Bayesian level from probability if not passed separately
+  const bayesLevel = bayesIsMeaningful
+    ? (bayesProbPct!>80?5:bayesProbPct!>55?4:bayesProbPct!>30?3:bayesProbPct!>10?2:1)
+    : null
   const verdictColor = probPct>50?'#ef4444':probPct>15?'#f97316':'#22c55e'
 
   // Probability source label (for verdict panel)
@@ -858,24 +863,78 @@ export default function ThreatBreakdownModal({
 
                     {/* ── Probability explanation + action guidance ─────────── */}
                     <div className="rounded-xl p-4" style={{ background: probPct>50?'rgba(239,68,68,0.07)':probPct>15?'rgba(249,115,22,0.07)':'rgba(34,197,94,0.06)', border:`1px solid ${verdictColor}25` }}>
-                      <div className="text-[9px] font-bold uppercase tracking-[0.2em] mb-2" style={{ color:verdictColor }}>What this means</div>
+                      <div className="text-[9px] font-bold uppercase tracking-[0.2em] mb-3" style={{ color:verdictColor }}>What this means</div>
+
+                      {/* Sentence 1: probability + what drove it */}
                       <p className="text-[10px] text-zinc-300 leading-relaxed mb-2">
-                        The model estimates a <span className="font-black" style={{ color:verdictColor }}>{probPct.toFixed(0)}% probability</span> this call represents a credible threat.
-                        The 95% confidence interval — <span className="font-bold text-yellow-300">{ciLow.toFixed(0)}% to {ciHigh.toFixed(0)}%</span> — captures the uncertainty across 600 Monte Carlo simulations.
-                        Source: <span className="font-mono text-[9px] text-zinc-500">{probSource}</span>.
+                        Kairos ran <span className="font-bold text-white">600 Monte Carlo simulations</span> across {FEATURE_TABLE_FE.length} behavioural features and arrived at a{' '}
+                        <span className="font-black" style={{ color:verdictColor }}>{probPct.toFixed(0)}% probability</span> that this call represents a credible, actionable threat —
+                        starting from a <span className="font-bold text-zinc-400">0.2% baseline</span> (the historical rate of real threat calls in the dataset).
                       </p>
-                      <div className="flex items-start gap-2 mt-2 pt-2.5" style={{ borderTop:`1px solid ${verdictColor}20` }}>
-                        <span className="text-[10px] shrink-0">
+
+                      {/* Sentence 2: what pushed the score */}
+                      {bayesTrace.length > 0 && (
+                        <p className="text-[10px] text-zinc-300 leading-relaxed mb-2">
+                          The score was driven primarily by{' '}
+                          <span className="font-bold text-white">
+                            {bayesTrace.slice(0, 3).map((s, i) => (
+                              <span key={i}>
+                                <span style={{ color: CAT_COLOR[s.feature.cat] ?? '#94a3b8' }}>"{s.keyword}"</span>
+                                {i < Math.min(bayesTrace.length, 3) - 1 ? ', ' : ''}
+                              </span>
+                            ))}
+                          </span>
+                          {' '}— {bayesTrace.length === 1
+                            ? `a single high-weight verbal signal (likelihood ratio ${bayesTrace[0].feature.lr.toFixed(0)}×) that multiplied the prior probability by more than ${Math.round(bayesTrace[0].feature.lr)}x.`
+                            : `${bayesTrace.length} compounding verbal signals each multiplying the odds sequentially. The strongest single driver, "${bayesTrace[0].keyword}", carries a likelihood ratio of ${bayesTrace[0].feature.lr.toFixed(0)}× — meaning calls containing this phrase are ${bayesTrace[0].feature.lr.toFixed(0)} times more likely to be real threats than baseline.`
+                          }
+                        </p>
+                      )}
+
+                      {/* Sentence 3: CI interpretation */}
+                      <p className="text-[10px] text-zinc-300 leading-relaxed mb-2">
+                        The 95% confidence interval spans{' '}
+                        <span className="font-bold text-yellow-300">{ciLow.toFixed(0)}% – {ciHigh.toFixed(0)}%</span>.{' '}
+                        {(ciHigh - ciLow) <= 8
+                          ? `This is a narrow band (${(ciHigh - ciLow).toFixed(0)} percentage points wide), indicating the model is highly confident in this assessment — the language in the call strongly matches known threat patterns.`
+                          : (ciHigh - ciLow) <= 20
+                          ? `This ${(ciHigh - ciLow).toFixed(0)}-point spread reflects moderate uncertainty — the call contains threat signals but also some ambiguous language. Human review is warranted to resolve the ambiguity.`
+                          : `This wide ${(ciHigh - ciLow).toFixed(0)}-point spread signals significant uncertainty — the call mixes threatening and benign language. Do not rely on the probability alone; read the full transcript carefully.`
+                        }
+                      </p>
+
+                      {/* Sentence 4: 3-model consensus */}
+                      <p className="text-[10px] text-zinc-300 leading-relaxed mb-3">
+                        {geminiLevel != null && (
+                          <>
+                            <span className="font-bold text-white">3-model consensus check:</span>{' '}
+                            Claude scored this at level {level}/5, Gemini at level {geminiLevel}/5, and Bayesian Monte Carlo at level {bayesLevel != null ? bayesLevel : level}/5.{' '}
+                            {Math.abs(level - (geminiLevel ?? level)) <= 1
+                              ? <span className="text-emerald-400 font-semibold">All three models agree within ±1 level — this increases confidence in the assessment.</span>
+                              : <span className="text-orange-400 font-semibold">Models diverged by {Math.abs(level - (geminiLevel ?? level))} levels — treat this as a contested assessment and apply human judgment.</span>
+                            }
+                          </>
+                        )}
+                        {geminiLevel == null && (
+                          <>
+                            The Bayesian model and Claude analysis were used — Gemini verification was not available for this call.
+                          </>
+                        )}
+                      </p>
+
+                      {/* Recommended action */}
+                      <div className="flex items-start gap-2 pt-3" style={{ borderTop:`1px solid ${verdictColor}20` }}>
+                        <span className="text-[12px] shrink-0">
                           {level>=5?'🚨':level>=4?'⚠️':level>=3?'⚡':level>=2?'👀':'✅'}
                         </span>
                         <div>
-                          <div className="text-[10px] font-bold mb-0.5" style={{ color:verdictColor }}>Recommended action</div>
+                          <div className="text-[10px] font-bold mb-1" style={{ color:verdictColor }}>Recommended action</div>
                           <p className="text-[10px] text-zinc-300 leading-relaxed">
-                            {level >= 5 && 'IMMEDIATE RESPONSE — Call 911 and lock down the school now. Do not wait for additional verification. Alert every administrator on campus.'}
-                            {level === 4 && 'Alert the principal immediately and contact local law enforcement. Do not dismiss this call. Verify the subject\'s location and secure the identified area.'}
-                            {level === 3 && 'Notify school administration and the school safety officer now. Pull the subject in for a counselor meeting within the next hour. Document everything.'}
-                            {level === 2 && 'Flag for counselor review today. Check in with any named students or staff. Monitor for additional tips about the same person or school.'}
-                            {level <= 1 && 'Log and monitor. No immediate action required, but keep this tip in the system for cross-referencing if similar reports come in.'}
+                            {level >= 5 && 'IMMEDIATE RESPONSE — Call 911 and initiate school lockdown now. Do not wait for additional verification. Contact every administrator on campus, secure all entry points, and move students away from identified locations. Time to action should be under 3 minutes.'}
+                            {level === 4 && 'Alert the principal and contact local law enforcement within the next 10 minutes. Do not dismiss this call. Verify the named subject\'s current location, pull their schedule, and secure the area identified in the call. Prepare a soft lockdown.'}
+                            {level === 3 && 'Notify the school safety officer and principal. Assign a counselor to meet with any named students within the hour. Pull surveillance footage if a specific location was mentioned. Document this tip and cross-check against prior reports from the same school.'}
+                            {level === 2 && 'Flag for counselor review today. Check in with named students or staff. Monitor for follow-up tips mentioning the same person or school. No lockdown warranted at this level, but treat as an open case for 48 hours.'}
+                            {level <= 1 && 'Log and monitor. No immediate action required. This call does not meet the threshold for intervention, but it is stored for cross-referencing — if a second tip from the same school arrives, re-evaluate the combined signal.'}
                           </p>
                         </div>
                       </div>
