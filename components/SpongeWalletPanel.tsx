@@ -48,21 +48,28 @@ export default function SpongeWalletPanel() {
   const [demoResult, setDemoResult] = useState<SpongeTransaction | null>(null)
   const knownTxIds = useRef<Set<string>>(new Set())
   const pollCount = useRef(0)
+  const lastBalance = useRef<number | null>(null)
 
   const load = async () => {
     try {
       const r = await fetch('/api/sponge', { cache: 'no-store' })
-      const fresh: SpongeData = await r.json()
+      const raw = await r.json()
       pollCount.current++
 
-      setData(prev => {
-        if (prev !== null && fresh.balance !== prev.balance) {
-          setFlash(true)
-          setTimeout(() => setFlash(false), 1200)
-        }
-        setPrev(prev?.balance ?? null)
-        return fresh
-      })
+      // Normalise — backend can return balance: null when wallet not configured
+      const fresh: SpongeData = {
+        balance: typeof raw.balance === 'number' ? raw.balance : 0,
+        transactions: Array.isArray(raw.transactions) ? raw.transactions : [],
+      }
+
+      // Detect balance change using a ref so there's no stale-closure risk
+      if (pollCount.current > 1 && lastBalance.current !== null && fresh.balance !== lastBalance.current) {
+        setFlash(true)
+        setTimeout(() => setFlash(false), 1200)
+      }
+      setPrev(lastBalance.current)
+      lastBalance.current = fresh.balance
+      setData(fresh)
 
       // Detect new transactions
       if (pollCount.current > 1) {
@@ -146,7 +153,7 @@ export default function SpongeWalletPanel() {
             style={{ background: 'rgba(20,184,166,0.08)', border: '1px solid rgba(20,184,166,0.25)' }}>
             <div className="text-[9px] uppercase tracking-widest text-teal-400/70">Wallet Balance</div>
             <div className={`text-2xl font-black tabular-nums transition-all duration-500 ${flash ? 'text-teal-300 scale-110' : 'text-teal-400'}`}>
-              {data != null ? `$${data.balance.toFixed(2)}` : '—'}
+              {data != null && data.balance != null ? `$${data.balance.toFixed(2)}` : '—'}
             </div>
             {prev != null && data != null && prev !== data.balance && (
               <div className={`text-[9px] font-semibold ${data.balance > prev ? 'text-red-400' : 'text-teal-300'}`}>
