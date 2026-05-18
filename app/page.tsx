@@ -1431,7 +1431,6 @@ export default function Dashboard() {
         .then((fresh: Tip[]) => {
           if (!Array.isArray(fresh)) return
           if (knownIds === null) {
-            // First poll — just prime the known-set, don't treat everything as new
             knownIds = new Set(fresh.map(t => t.id))
             return
           }
@@ -1442,10 +1441,39 @@ export default function Dashboard() {
         .catch(() => {})
     }, 12000)
 
+    // ── Live-call polling fallback — in case Realtime isn't enabled for live_calls ─
+    // Polls every 2s to catch active calls and drive the orb even without Realtime.
+    let lastLiveCallId = ''
+    let lastLiveStatus = ''
+    const liveCallPoll = setInterval(() => {
+      fetch('/api/live-call')
+        .then(r => r.ok ? r.json() : null)
+        .then((d: any) => {
+          if (!d) return
+          const cid = d.call_id || ''
+          const st  = d.status || ''
+          if (!cid) return
+          // New active call — drive overlay + orb
+          if (st === 'active' && (cid !== lastLiveCallId || lastLiveStatus !== 'active')) {
+            lastLiveCallId = cid; lastLiveStatus = 'active'
+            setLiveCall({ callId: cid, transcript: d.words_so_far || '', probability: d.probability_pct || 0, threatLevel: d.threat_level || 1, school: d.school_name || 'Unknown School', features: d.top_features || [] })
+            setOrbMode((d.threat_level || 1) >= 4 ? 'critical' : 'speaking')
+          }
+          // Call just completed
+          if (st === 'complete' && lastLiveStatus === 'active') {
+            lastLiveStatus = 'complete'
+            setLiveCall(null)
+            setOrbMode('thinking')
+          }
+        })
+        .catch(() => {})
+    }, 2000)
+
     return () => {
       supabase.removeChannel(ch)
       supabase.removeChannel(liveCh)
       clearInterval(pollTimer)
+      clearInterval(liveCallPoll)
     }
   }, [demoRunning])
 
