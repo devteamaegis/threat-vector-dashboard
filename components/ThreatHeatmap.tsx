@@ -175,6 +175,7 @@ export default function ThreatHeatmap({
   const [freshIds, setFreshIds] = useState<Set<string>>(new Set())
   const previousIds = useRef<Set<string>>(new Set())
   const isLive = liveMode ?? internalLive
+  const [userLocation, setUserLocation] = useState<{ lat: number; lng: number; accuracy: number } | null>(null)
 
   useEffect(() => {
     const ids = new Set(tips.map(t => t.id))
@@ -191,6 +192,27 @@ export default function ThreatHeatmap({
     }
     previousIds.current = ids
   }, [tips])
+
+  // Live geolocation tracking
+  useEffect(() => {
+    if (typeof navigator === 'undefined' || !navigator.geolocation) return
+    const watchId = navigator.geolocation.watchPosition(
+      (position) => {
+        setUserLocation({
+          lat: position.coords.latitude,
+          lng: position.coords.longitude,
+          accuracy: position.coords.accuracy,
+        })
+      },
+      () => {
+        // Geolocation denied or unavailable — userLocation stays null, no markers render
+      },
+      { enableHighAccuracy: true, maximumAge: 10000, timeout: 15000 },
+    )
+    return () => {
+      navigator.geolocation.clearWatch(watchId)
+    }
+  }, [])
 
   const points = useMemo<ThreatPoint[]>(() => {
     return tips
@@ -222,14 +244,25 @@ export default function ThreatHeatmap({
   }, [points])
 
   useEffect(() => {
-    if (points.length === 0) return
+    if (points.length === 0) {
+      // Auto-center to user location when there are no threat points
+      if (userLocation) {
+        mapRef.current?.flyTo({
+          center: [userLocation.lng, userLocation.lat],
+          zoom: 14,
+          duration: 900,
+          essential: true,
+        })
+      }
+      return
+    }
     mapRef.current?.flyTo({
       center: [center.longitude, center.latitude],
       zoom: center.zoom,
       duration: 900,
       essential: true,
     })
-  }, [center, points.length])
+  }, [center, points.length, userLocation])
 
   const heatData = useMemo(() => ({
     type: 'FeatureCollection',
@@ -248,6 +281,59 @@ export default function ThreatHeatmap({
       properties: { color: p.level === 5 ? '#ef4444' : '#f97316' },
     })),
   }), [points])
+
+  // User location accuracy circle GeoJSON
+  const userAccuracyData = useMemo(() => {
+    if (!userLocation) return null
+    return {
+      type: 'FeatureCollection',
+      features: [{
+        type: 'Feature',
+        geometry: {
+          type: 'Polygon',
+          coordinates: [circlePolygon(userLocation.lng, userLocation.lat, Math.min(userLocation.accuracy, 500))],
+        },
+        properties: {},
+      }],
+    }
+  }, [userLocation])
+
+  // User 200m monitoring ring GeoJSON
+  const userMonitoringRingData = useMemo(() => {
+    if (!userLocation) return null
+    return {
+      type: 'FeatureCollection',
+      features: [{
+        type: 'Feature',
+        geometry: {
+          type: 'Polygon',
+          coordinates: [circlePolygon(userLocation.lng, userLocation.lat, 200)],
+        },
+        properties: {},
+      }],
+    }
+  }, [userLocation])
+
+  // AI threat vector lines from user to high-level threat points
+  const threatVectorData = useMemo(() => {
+    if (!userLocation || points.length === 0) return null
+    const highThreats = points.filter(p => p.level >= 4)
+    if (highThreats.length === 0) return null
+    return {
+      type: 'FeatureCollection',
+      features: highThreats.map((p) => ({
+        type: 'Feature',
+        geometry: {
+          type: 'LineString',
+          coordinates: [
+            [userLocation.lng, userLocation.lat],
+            [p.lng, p.lat],
+          ],
+        },
+        properties: { level: p.level },
+      })),
+    }
+  }, [userLocation, points])
 
   const heatLayer: LayerProps = {
     id: 'threat-heat',
@@ -275,6 +361,35 @@ export default function ThreatHeatmap({
       'fill-color': ['get', 'color'],
       'fill-opacity': 0.15,
       'fill-outline-color': ['get', 'color'],
+    },
+  }
+
+  const userAccuracyLayer: LayerProps = {
+    id: 'user-location-accuracy-fill',
+    type: 'fill',
+    paint: {
+      'fill-color': 'rgba(59,130,246,0.06)',
+      'fill-outline-color': 'rgba(59,130,246,0.2)',
+    },
+  }
+
+  const userMonitoringLayer: LayerProps = {
+    id: 'user-location-ring-fill',
+    type: 'fill',
+    paint: {
+      'fill-color': 'rgba(59,130,246,0.04)',
+      'fill-outline-color': 'rgba(59,130,246,0.35)',
+    },
+  }
+
+  const threatVectorLayer: LayerProps = {
+    id: 'threat-vector-lines',
+    type: 'line',
+    paint: {
+      'line-color': '#f59e0b',
+      'line-opacity': 0.4,
+      'line-width': 1.5,
+      'line-dasharray': [4, 3],
     },
   }
 
@@ -333,6 +448,99 @@ export default function ThreatHeatmap({
             <Source id="threat-heat-source" type="geojson" data={heatData as never}>
               <Layer {...heatLayer} />
             </Source>
+          )}
+
+          {/* User location accuracy circle */}
+          {userLocation && userAccuracyData && (
+            <Source id="user-location-accuracy" type="geojson" data={userAccuracyData as never}>
+              <Layer {...userAccuracyLayer} />
+            </Source>
+          )}
+
+          {/* User 200m monitoring ring */}
+          {userLocation && userMonitoringRingData && (
+            <Source id="user-location-ring" type="geojson" data={userMonitoringRingData as never}>
+              <Layer {...userMonitoringLayer} />
+            </Source>
+          )}
+
+          {/* AI threat vector lines from user to high-level threats */}
+          {userLocation && threatVectorData && (
+            <Source id="threat-vector-source" type="geojson" data={threatVectorData as never}>
+              <Layer {...threatVectorLayer} />
+            </Source>
+          )}
+
+          {/* AI threat vector midpoint labels */}
+          {userLocation && threatVectorData && points.filter(p => p.level >= 4).map((p, index) => {
+            const midLat = (userLocation.lat + p.lat) / 2
+            const midLng = (userLocation.lng + p.lng) / 2
+            return (
+              <Marker key={`threat-vector-label-${index}`} latitude={midLat} longitude={midLng} anchor="center">
+                <div style={{
+                  pointerEvents: 'none',
+                  background: 'rgba(0,0,0,0.7)',
+                  border: '1px solid rgba(245,158,11,0.4)',
+                  borderRadius: 4,
+                  padding: '2px 5px',
+                  fontSize: 8,
+                  fontWeight: 700,
+                  letterSpacing: '0.12em',
+                  color: '#f59e0b',
+                  textTransform: 'uppercase',
+                  whiteSpace: 'nowrap',
+                }}>
+                  AI PREDICTED THREAT VECTOR
+                </div>
+              </Marker>
+            )
+          })}
+
+          {/* User location pulsing dot marker */}
+          {userLocation && (
+            <Marker latitude={userLocation.lat} longitude={userLocation.lng} anchor="center">
+              <div style={{ position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                {/* Pulsing ring */}
+                <span style={{
+                  position: 'absolute',
+                  width: 32,
+                  height: 32,
+                  borderRadius: '50%',
+                  border: '2px solid rgba(59,130,246,0.5)',
+                  animation: 'heatPulse 2s infinite',
+                }} />
+                {/* Dot */}
+                <div style={{
+                  width: 16,
+                  height: 16,
+                  borderRadius: '50%',
+                  background: 'white',
+                  border: '3px solid #3b82f6',
+                  boxShadow: '0 0 0 4px rgba(59,130,246,0.3)',
+                  zIndex: 1,
+                }} />
+                {/* Label */}
+                <div style={{
+                  position: 'absolute',
+                  top: 18,
+                  left: '50%',
+                  transform: 'translateX(-50%)',
+                  whiteSpace: 'nowrap',
+                  background: 'rgba(0,0,0,0.75)',
+                  border: '1px solid rgba(59,130,246,0.3)',
+                  borderRadius: 4,
+                  padding: '2px 6px',
+                  fontSize: 8,
+                  fontWeight: 700,
+                  letterSpacing: '0.1em',
+                  color: '#93c5fd',
+                  textTransform: 'uppercase',
+                  pointerEvents: 'none',
+                }}>
+                  YOUR LOCATION · Monitoring Active
+                </div>
+              </div>
+            </Marker>
           )}
 
           {layers.points && points.map(p => {
@@ -424,6 +632,12 @@ export default function ThreatHeatmap({
           setLayers={setLayers}
           liveMode={isLive}
           setLiveMode={toggleLive}
+          onLocateMe={() => {
+            if (userLocation) {
+              mapRef.current?.flyTo({ center: [userLocation.lng, userLocation.lat], zoom: 15, duration: 900, essential: true })
+            }
+          }}
+          hasUserLocation={Boolean(userLocation)}
         />
       </section>
 
@@ -438,6 +652,12 @@ export default function ThreatHeatmap({
           liveMode={isLive}
           setLiveMode={toggleLive}
           compact
+          onLocateMe={() => {
+            if (userLocation) {
+              mapRef.current?.flyTo({ center: [userLocation.lng, userLocation.lat], zoom: 15, duration: 900, essential: true })
+            }
+          }}
+          hasUserLocation={Boolean(userLocation)}
         />
       </section>
 
@@ -516,6 +736,8 @@ function ControlPanel({
   liveMode,
   setLiveMode,
   compact,
+  onLocateMe,
+  hasUserLocation,
 }: {
   timeFilter: TimeFilter
   setTimeFilter: (value: TimeFilter) => void
@@ -526,6 +748,8 @@ function ControlPanel({
   liveMode: boolean
   setLiveMode: (value: boolean) => void
   compact?: boolean
+  onLocateMe?: () => void
+  hasUserLocation?: boolean
 }) {
   const toggleLevel = (level: number) => {
     const next = new Set(levels)
@@ -581,6 +805,15 @@ function ControlPanel({
         <span className={`h-2 w-2 rounded-full ${liveMode ? 'bg-green-400' : 'bg-zinc-600'}`} />
         Live mode
       </button>
+      {onLocateMe && (
+        <button
+          onClick={onLocateMe}
+          disabled={!hasUserLocation}
+          className={`mt-2 flex w-full items-center justify-center gap-2 rounded-lg border px-3 py-2 text-xs font-bold uppercase tracking-wide transition-colors ${hasUserLocation ? 'border-blue-400/30 bg-blue-950/35 text-blue-200 hover:bg-blue-900/40' : 'cursor-not-allowed border-white/5 bg-white/5 text-zinc-600'}`}
+        >
+          <span>&#128205;</span> Locate Me
+        </button>
+      )}
     </div>
   )
 }
