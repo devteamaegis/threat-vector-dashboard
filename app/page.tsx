@@ -1611,6 +1611,7 @@ export default function Dashboard() {
         {analysisTip && (
           <ThreatBreakdownModal
             transcript={analysisTip.description ?? ''}
+            englishTranslation={analysisTip.english_translation}
             bayesProbPct={analysisTip.bayes_probability_pct}
             bayesCiLow={analysisTip.bayes_ci_low_pct}
             bayesCiHigh={analysisTip.bayes_ci_high_pct}

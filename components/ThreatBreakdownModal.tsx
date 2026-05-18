@@ -135,6 +135,7 @@ const CAT_COLOR: Record<string, string> = {
 // ── Types ──────────────────────────────────────────────────────────────────────
 export interface ThreatBreakdownProps {
   transcript: string
+  englishTranslation?: string | null   // Gemini-translated English text for non-English calls
   bayesProbPct?: number | null
   bayesCiLow?: number | null
   bayesCiHigh?: number | null
@@ -176,12 +177,20 @@ function VerdictGauge({ pct, color }: { pct: number; color: string }) {
 
 // ── Main component ─────────────────────────────────────────────────────────────
 export default function ThreatBreakdownModal({
-  transcript, bayesProbPct, bayesCiLow, bayesCiHigh, bayesDrivers,
+  transcript, englishTranslation, bayesProbPct, bayesCiLow, bayesCiHigh, bayesDrivers,
   threatLevel, callerEmotion, callerTone, threeModelConsensus, schoolName, onClose,
 }: ThreatBreakdownProps) {
-  const words       = transcript.split(/\s+/).filter(Boolean)
-  const wordClasses = useMemo(() => words.map(w => classifyWord(w)), [transcript]) // eslint-disable-line react-hooks/exhaustive-deps
-  const bayesTrace  = useMemo(() => computeBayesTrace(transcript), [transcript])
+  // For non-English calls: show the original transcript for display, but run all
+  // classification (word colors, Bayesian trace, signal counts) on the English
+  // translation so the scoring model works correctly.
+  const isTranslated  = !!(englishTranslation && englishTranslation.trim())
+  const analysisText  = isTranslated ? englishTranslation! : transcript
+  const displayWords  = transcript.split(/\s+/).filter(Boolean)   // shown in UI (original language)
+  const analysisWords = analysisText.split(/\s+/).filter(Boolean)  // used for classification
+
+  const words       = displayWords
+  const wordClasses = useMemo(() => analysisWords.map(w => classifyWord(w)), [analysisText]) // eslint-disable-line react-hooks/exhaustive-deps
+  const bayesTrace  = useMemo(() => computeBayesTrace(analysisText), [analysisText])
   const composites  = useMemo(() => detectComposites(bayesTrace), [bayesTrace])
 
   const threatCount      = wordClasses.filter(c => c === 'threat').length
@@ -454,8 +463,21 @@ export default function ThreatBreakdownModal({
                   <div className="flex items-center gap-2 mb-4">
                     <div className="text-[9px] font-black uppercase tracking-[0.3em] text-zinc-400">Scanning Transcript</div>
                     <div className="flex-1 h-px" style={{ background:'rgba(255,255,255,0.04)' }} />
+                    {isTranslated && (
+                      <span className="flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[9px] font-bold"
+                        style={{ background:'rgba(99,102,241,0.15)', color:'#818cf8', border:'1px solid rgba(99,102,241,0.3)' }}>
+                        🌐 Gemini Live · Auto-translated
+                      </span>
+                    )}
                     <div className="text-[9px] font-mono text-zinc-600">{revealedCount}/{words.length} words</div>
                   </div>
+                  {isTranslated && (
+                    <div className="rounded-lg px-3 py-2 mb-3 text-[10px] text-indigo-300 leading-relaxed"
+                      style={{ background:'rgba(99,102,241,0.07)', border:'1px solid rgba(99,102,241,0.2)' }}>
+                      <span className="font-bold text-indigo-400">English translation: </span>
+                      {englishTranslation}
+                    </div>
+                  )}
                   <div className="text-[13px] leading-10 flex flex-wrap gap-x-2 gap-y-2">
                     {words.map((word, i) => {
                       if (i >= revealedCount) return null
