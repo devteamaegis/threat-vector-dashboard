@@ -1,7 +1,7 @@
 'use client'
 
 import dynamic from 'next/dynamic'
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import type { Tip } from '@/lib/supabase'
 
 const ThreatHeatmap = dynamic(() => import('@/components/ThreatHeatmap'), { ssr: false })
@@ -12,20 +12,33 @@ function getTipHasGps(tip: Tip) {
 
 export default function HeatmapPage() {
   const [tips, setTips] = useState<Tip[]>([])
-  const [liveMode, setLiveMode] = useState(false)
+  const [liveMode, setLiveMode] = useState(true)  // always-on by default
+  const pollRef = useRef<ReturnType<typeof setInterval> | null>(null)
 
+  // Initial load + fast Supabase-realtime-style polling
   useEffect(() => {
+    let cancelled = false
+
     const load = () => {
       fetch('/api/tips')
         .then(r => r.json())
-        .then(data => setTips(Array.isArray(data) ? data : []))
+        .then(data => {
+          if (!cancelled) setTips(Array.isArray(data) ? data : [])
+        })
         .catch(() => {})
     }
+
     load()
-    if (!liveMode) return
-    const id = setInterval(load, 15000)
-    return () => clearInterval(id)
-  }, [liveMode])
+
+    // Always poll every 6 s so new geocoded tips (mentioned_lat/lng included)
+    // appear on the map as soon as the backend writes them
+    pollRef.current = setInterval(load, 6000)
+
+    return () => {
+      cancelled = true
+      if (pollRef.current) clearInterval(pollRef.current)
+    }
+  }, [])  // run once — polling is unconditional
 
   const gpsCount = tips.filter(getTipHasGps).length
 
@@ -55,16 +68,15 @@ export default function HeatmapPage() {
             </span>
           )}
         </div>
-        {liveMode && (
-          <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-md"
-            style={{ background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.2)' }}>
-            <span className="relative flex h-2 w-2">
-              <span className="absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75 animate-ping" />
-              <span className="relative inline-flex h-2 w-2 rounded-full bg-red-500" />
-            </span>
-            <span className="text-[9px] font-black uppercase tracking-[0.2em] text-red-400">Live</span>
-          </div>
-        )}
+        {/* Live indicator — always shown since polling is always on */}
+        <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-md"
+          style={{ background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.2)' }}>
+          <span className="relative flex h-2 w-2">
+            <span className="absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75 animate-ping" />
+            <span className="relative inline-flex h-2 w-2 rounded-full bg-red-500" />
+          </span>
+          <span className="text-[9px] font-black uppercase tracking-[0.2em] text-red-400">Live</span>
+        </div>
       </header>
       <div className="flex-1 min-h-0">
         <ThreatHeatmap tips={tips} liveMode={liveMode} onLiveModeChange={setLiveMode} />
