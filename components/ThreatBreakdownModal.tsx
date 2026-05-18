@@ -145,6 +145,8 @@ export interface ThreatBreakdownProps {
   callerTone?: string | null
   threeModelConsensus?: boolean | null
   schoolName?: string | null
+  osintFindings?: string | null
+  backgroundCheckSubject?: string | null
   onClose: () => void
 }
 
@@ -178,7 +180,8 @@ function VerdictGauge({ pct, color }: { pct: number; color: string }) {
 // ── Main component ─────────────────────────────────────────────────────────────
 export default function ThreatBreakdownModal({
   transcript, englishTranslation, bayesProbPct, bayesCiLow, bayesCiHigh, bayesDrivers,
-  threatLevel, callerEmotion, callerTone, threeModelConsensus, schoolName, onClose,
+  threatLevel, callerEmotion, callerTone, threeModelConsensus, schoolName,
+  osintFindings, backgroundCheckSubject, onClose,
 }: ThreatBreakdownProps) {
   // For non-English calls: show the original transcript for display, but run all
   // classification (word colors, Bayesian trace, signal counts) on the English
@@ -877,6 +880,29 @@ export default function ThreatBreakdownModal({
                         </div>
                       </div>
                     </div>
+
+                    {/* ── Sponge Background Check ───────────────────────── */}
+                    {backgroundCheckSubject && (
+                      <div className="rounded-xl p-4" style={{ background: 'rgba(20,184,166,0.06)', border: '1px solid rgba(20,184,166,0.25)' }}>
+                        <div className="flex items-center gap-2 mb-2">
+                          <span className="text-[9px] font-bold uppercase tracking-[0.2em] text-teal-400">🕵️ Sponge Background Check</span>
+                          <span className="text-[8px] px-1.5 py-0.5 rounded-full font-semibold"
+                            style={{ background: 'rgba(20,184,166,0.12)', color: '#14b8a6', border: '1px solid rgba(20,184,166,0.2)' }}>
+                            AI-paid · DuckDuckGo OSINT
+                          </span>
+                        </div>
+                        <div className="flex items-center gap-2 mb-2">
+                          <span className="text-[10px] text-zinc-400">Subject:</span>
+                          <span className="text-[10px] font-bold text-teal-300 font-mono">{backgroundCheckSubject}</span>
+                        </div>
+                        {osintFindings && osintFindings.trim() && osintFindings !== 'OSINT unavailable' && (
+                          <p className="text-[10px] text-zinc-300 leading-relaxed line-clamp-4">{osintFindings}</p>
+                        )}
+                        {(!osintFindings || osintFindings === 'OSINT unavailable') && (
+                          <p className="text-[10px] text-zinc-500 italic">No prior incidents found in open-source search.</p>
+                        )}
+                      </div>
+                    )}
 
                     {/* Top drivers + factor breakdown */}
                     <div className="grid grid-cols-2 gap-4">

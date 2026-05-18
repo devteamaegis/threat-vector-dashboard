@@ -1618,6 +1618,8 @@ export default function Dashboard() {
             callerTone={analysisTip.caller_tone}
             threeModelConsensus={analysisTip.three_model_consensus}
             schoolName={analysisTip.school_name}
+            osintFindings={analysisTip.osint_findings}
+            backgroundCheckSubject={analysisTip.background_check_subject}
             onClose={() => setAnalysisTip(null)}
           />
         )}
