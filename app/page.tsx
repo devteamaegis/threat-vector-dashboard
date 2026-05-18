@@ -1703,7 +1703,7 @@ export default function Dashboard() {
           <LanguageToggle />
           <ThemeToggle />
           <button onClick={() => setShowShortcuts(true)} className="w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-bold text-[var(--muted)] border border-[var(--border)] hover:text-[var(--foreground)] hover:bg-[var(--surface-2)] transition-colors">?</button>
-          <LiveCounter count={tips.length} />
+          <LiveCounter count={realTips.length} />
             <a href="/math" target="_blank" rel="noopener"
               className="hidden md:flex items-center gap-1.5 text-[10px] font-semibold uppercase px-3 py-1.5 rounded-md border transition-all tracking-widest border-purple-500/60 text-purple-400 bg-purple-950/20 hover:bg-purple-950/40 hover:border-purple-500">
               <span>∑</span>Math
