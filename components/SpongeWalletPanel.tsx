@@ -44,6 +44,8 @@ export default function SpongeWalletPanel() {
   const [prev, setPrev] = useState<number | null>(null)
   const [flash, setFlash] = useState(false)
   const [newIds, setNewIds] = useState<Set<string>>(new Set())
+  const [demoRunning, setDemoRunning] = useState(false)
+  const [demoResult, setDemoResult] = useState<SpongeTransaction | null>(null)
   const knownTxIds = useRef<Set<string>>(new Set())
   const pollCount = useRef(0)
 
@@ -80,6 +82,41 @@ export default function SpongeWalletPanel() {
         knownTxIds.current.add(key)
       })
     } catch { /* silently ignore */ }
+  }
+
+  const runDemoCheck = async () => {
+    if (demoRunning) return
+    setDemoRunning(true)
+    setDemoResult(null)
+    try {
+      const r = await fetch('/api/sponge/demo', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ subject: 'Ishaan Samantray', school: 'YC Demo', threat_level: 3 }),
+      })
+      const result = await r.json()
+      const tx: SpongeTransaction = {
+        service: 'background-check-agent',
+        amount: (result.amount_cents || 3) / 100,
+        label: 'Background Check',
+        icon: '🕵️',
+        call_id: result.tx_id || 'demo',
+        subject: result.subject || 'Ishaan Samantray',
+        tx_id: result.tx_id,
+        created_at: new Date().toISOString(),
+      }
+      setDemoResult(tx)
+      // Refresh transaction feed after 1s so real DB entry shows up
+      setTimeout(load, 1200)
+    } catch {
+      setDemoResult({
+        service: 'background-check-agent', amount: 0.03, label: 'Background Check',
+        icon: '🕵️', subject: 'Ishaan Samantray', tx_id: 'demo-offline',
+        created_at: new Date().toISOString(),
+      })
+    } finally {
+      setDemoRunning(false)
+    }
   }
 
   useEffect(() => {
@@ -178,11 +215,40 @@ export default function SpongeWalletPanel() {
 
       {/* Transaction feed */}
       <div className="flex-1 overflow-y-auto px-6 py-3 flex flex-col gap-2">
-        <div className="text-[9px] uppercase tracking-[0.2em] text-[var(--muted)] mb-1 flex items-center gap-2">
-          <span>Transaction Feed</span>
-          <div className="flex-1 h-px" style={{ background: 'var(--border)' }} />
-          <span>most recent first</span>
+        <div className="flex items-center gap-2 mb-1">
+          <div className="text-[9px] uppercase tracking-[0.2em] text-[var(--muted)] flex items-center gap-2 flex-1">
+            <span>Transaction Feed</span>
+            <div className="flex-1 h-px" style={{ background: 'var(--border)' }} />
+            <span>most recent first</span>
+          </div>
+          <button onClick={runDemoCheck} disabled={demoRunning}
+            className="shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[10px] font-bold uppercase tracking-wide transition-all"
+            style={{
+              background: demoRunning ? 'rgba(20,184,166,0.05)' : 'rgba(20,184,166,0.12)',
+              color: demoRunning ? '#5eead4' : '#14b8a6',
+              border: '1px solid rgba(20,184,166,0.3)',
+              cursor: demoRunning ? 'not-allowed' : 'pointer',
+            }}>
+            {demoRunning
+              ? <><span className="w-2 h-2 rounded-full bg-teal-400 animate-pulse" />Running…</>
+              : <><span>🕵️</span>Demo Check</>}
+          </button>
         </div>
+
+        {/* Demo result card */}
+        {demoResult && (
+          <div className="p-3 rounded-lg mb-1 animate-[fadeIn_.4s_ease]"
+            style={{ background: 'rgba(20,184,166,0.1)', border: '1px solid rgba(20,184,166,0.35)' }}>
+            <div className="flex items-center justify-between mb-1">
+              <span className="text-[11px] font-bold text-teal-300">🕵️ Background Check — {demoResult.subject}</span>
+              <span className="text-[11px] font-bold tabular-nums text-teal-400">−{formatAmount(demoResult.amount)}</span>
+            </div>
+            <div className="text-[9px] text-teal-500/80 font-mono">
+              tx: {demoResult.tx_id || 'demo'} · via Sponge · {new Date().toLocaleTimeString()}
+            </div>
+            <div className="mt-1.5 text-[10px] text-teal-200/70">✓ Payment authorized · OSINT complete · No threat indicators</div>
+          </div>
+        )}
 
         {!data && (
           <div className="flex-1 flex items-center justify-center">

@@ -23,6 +23,7 @@ type ThreatPoint = {
   level: number
   probability: number
   locations: string[]
+  isCallerGps: boolean  // true = real GPS from caller; false = inferred from school name
 }
 
 const LEVEL_COLOR: Record<number, string> = {
@@ -218,6 +219,7 @@ export default function ThreatHeatmap({
     return tips
       .filter(t => inTime(t, timeFilter))
       .map(tip => {
+        const isCallerGps = typeof tip.call_lat === 'number' && typeof tip.call_lng === 'number'
         const coords = getTipCoords(tip)
         if (!coords) return null
         const level = threatLevel(tip)
@@ -229,6 +231,7 @@ export default function ThreatHeatmap({
           level,
           probability: Math.max(0, Math.min(100, tip.bayes_probability_pct ?? level * 18)),
           locations: extractLocationClues(tip),
+          isCallerGps,
         }
       })
       .filter(Boolean) as ThreatPoint[]
@@ -544,17 +547,47 @@ export default function ThreatHeatmap({
           )}
 
           {layers.points && points.map(p => {
-            const size = 6 + (p.probability / 100) * 16
-            const color = LEVEL_COLOR[p.level]
+            const size = p.isCallerGps
+              ? Math.max(14, 10 + (p.probability / 100) * 12)   // GPS dots: always visible
+              : 6 + (p.probability / 100) * 16                   // Inferred: smaller
+            const color = p.isCallerGps ? '#22c55e' : LEVEL_COLOR[p.level]  // Green for GPS, threat color for inferred
             return (
               <Marker key={p.tip.id} latitude={p.lat} longitude={p.lng} anchor="center">
                 <button
                   onClick={() => setSelected(p)}
-                  className={`relative flex items-center justify-center rounded-full border border-white/40 shadow-[0_0_18px_rgba(0,0,0,0.85)] ${freshIds.has(p.tip.id) ? 'animate-[pinDrop_.42s_cubic-bezier(.21,1.18,.38,1)]' : ''}`}
-                  style={{ width: size, height: size, background: color }}
-                  aria-label={`Open threat at ${p.tip.school_name ?? 'unknown school'}`}
+                  className={`relative flex items-center justify-center rounded-full shadow-[0_0_18px_rgba(0,0,0,0.85)] ${freshIds.has(p.tip.id) ? 'animate-[pinDrop_.42s_cubic-bezier(.21,1.18,.38,1)]' : ''}`}
+                  style={{
+                    width: size,
+                    height: size,
+                    background: color,
+                    border: p.isCallerGps ? '2.5px solid rgba(255,255,255,0.9)' : '1.5px solid rgba(255,255,255,0.4)',
+                    boxShadow: p.isCallerGps ? `0 0 14px ${color}90` : undefined,
+                  }}
+                  aria-label={`${p.isCallerGps ? 'Caller GPS location' : 'Threat at'} ${p.tip.school_name ?? 'unknown school'}`}
                 >
+                  {/* Pulse ring for high threat */}
                   {p.level >= 4 && <span className="absolute inset-0 rounded-full border" style={{ borderColor: color, animation: 'heatPulse 1.8s infinite' }} />}
+                  {/* GPS indicator dot */}
+                  {p.isCallerGps && (
+                    <span style={{
+                      position: 'absolute',
+                      top: -14,
+                      left: '50%',
+                      transform: 'translateX(-50%)',
+                      background: 'rgba(0,0,0,0.75)',
+                      border: '1px solid rgba(34,197,94,0.4)',
+                      borderRadius: 3,
+                      padding: '1px 4px',
+                      fontSize: 7,
+                      fontWeight: 700,
+                      letterSpacing: '0.1em',
+                      color: '#86efac',
+                      whiteSpace: 'nowrap',
+                      pointerEvents: 'none',
+                    }}>
+                      📞 CALLER GPS
+                    </span>
+                  )}
                 </button>
               </Marker>
             )
@@ -620,6 +653,24 @@ export default function ThreatHeatmap({
             <div className="mt-1 text-xs text-red-100">{stats.hotzone}</div>
           </div>
         )}
+        {/* Legend */}
+        <div className="mt-4 pt-4 border-t border-white/8">
+          <div className="text-[9px] font-bold uppercase tracking-[0.2em] text-zinc-500 mb-2">Map Legend</div>
+          <div className="flex flex-col gap-1.5">
+            <div className="flex items-center gap-2">
+              <div className="w-3.5 h-3.5 rounded-full border-2 border-white/90 shrink-0" style={{ background: '#22c55e', boxShadow: '0 0 8px #22c55e80' }} />
+              <span className="text-[10px] text-zinc-300">Caller GPS location</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <div className="w-3 h-3 rounded-full border border-white/40 shrink-0" style={{ background: '#ef4444' }} />
+              <span className="text-[10px] text-zinc-300">Threat mentioned location</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <div className="w-3.5 h-3.5 rotate-45 rounded-sm border border-white/30 shrink-0" style={{ background: '#f59e0b' }} />
+              <span className="text-[10px] text-zinc-300">AI location clue (in-call)</span>
+            </div>
+          </div>
+        </div>
       </aside>
 
       <section className="absolute right-4 top-4 hidden w-80 rounded-xl border border-white/10 bg-black/60 p-4 backdrop-blur-md md:block">

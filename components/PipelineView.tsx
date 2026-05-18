@@ -162,6 +162,7 @@ function cubicAt(ax: number, ay: number, mx: number, bx: number, bxe: number, by
 export default function PipelineView() {
   const [selected, setSelected] = useState<PipelineNode | null>(null)
   const [tick, setTick] = useState(0)
+  const [showMath, setShowMath] = useState(false)
 
   useEffect(() => {
     const id = setInterval(() => setTick(t => (t + 1) % 120), 35)
@@ -202,11 +203,42 @@ export default function PipelineView() {
             </div>
           ))}
         </div>
-        <div className="mt-3 pt-3 text-[9px] text-[var(--muted-2)]"
+        <div className="mt-3 pt-3 flex items-center justify-between"
           style={{ borderTop: '1px solid var(--border)' }}>
-          Click any node to explore
+          <span className="text-[9px] text-[var(--muted-2)]">Click any node to explore</span>
+          <button onClick={() => setShowMath(v => !v)}
+            className="flex items-center gap-1 text-[9px] font-bold uppercase tracking-wide px-2 py-1 rounded transition-all"
+            style={{
+              background: showMath ? 'rgba(168,85,247,0.15)' : 'rgba(168,85,247,0.06)',
+              color: '#c084fc',
+              border: '1px solid rgba(168,85,247,0.3)',
+            }}>
+            ∑ {showMath ? 'Hide' : 'The Math'}
+          </button>
         </div>
       </div>
+
+      {/* ── Math panel overlay ────────────────────────────────────────────── */}
+      {showMath && (
+        <div className="absolute inset-0 z-30 flex flex-col" style={{ background: 'var(--background)' }}>
+          <div className="shrink-0 flex items-center justify-between px-5 py-3"
+            style={{ borderBottom: '1px solid var(--border)', background: 'var(--surface)' }}>
+            <div className="flex items-center gap-2">
+              <span className="text-purple-400 font-black text-base">∑</span>
+              <span className="text-[11px] font-bold uppercase tracking-[0.2em] text-purple-300">The Math Behind the Triage</span>
+              <span className="text-[9px] px-2 py-0.5 rounded-full uppercase tracking-wider font-semibold"
+                style={{ background: 'rgba(168,85,247,0.12)', color: '#c084fc', border: '1px solid rgba(168,85,247,0.25)' }}>
+                Bayesian Monte Carlo · 500 sims
+              </span>
+            </div>
+            <button onClick={() => setShowMath(false)}
+              className="text-[var(--muted)] hover:text-[var(--foreground)] text-xl leading-none transition-colors">×</button>
+          </div>
+          <div className="flex-1 overflow-hidden">
+            <iframe src="/math" className="w-full h-full border-0" title="Kairos Math Demo" />
+          </div>
+        </div>
+      )}
 
       {/* ── Column headers ────────────────────────────────────────────── */}
       <div className="shrink-0 pt-4 pb-1 px-0" style={{ marginLeft: 0 }}>

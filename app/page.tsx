@@ -26,10 +26,11 @@ import {
 // ─── Constants ────────────────────────────────────────────────────────────────
 
 const URGENCY_BG: Record<string, string> = {
-  critical: 'bg-red-600/90 text-white',
-  high:     'bg-orange-500/90 text-white',
-  medium:   'bg-yellow-500/90 text-black',
-  low:      'bg-slate-600/80 text-zinc-900',
+  critical:  'bg-red-600/90 text-white',
+  high:      'bg-orange-500/90 text-white',
+  medium:    'bg-yellow-500/90 text-black',
+  low:       'bg-green-600/80 text-white',
+  no_threat: 'bg-green-600/80 text-white',
 }
 function CategoryIcon({ category, size = 14 }: { category: string; size?: number }) {
   const cls = "shrink-0"
@@ -1213,17 +1214,12 @@ function Stat({ label, value, red, sub }: { label: string; value: number; red?: 
 }
 
 // Live call counter
-function LiveCounter() {
-  const [n, setN] = useState(1247)
-  useEffect(() => {
-    const id = setInterval(() => setN(c => c + Math.floor(Math.random() * 3)), 9000 + Math.random() * 3000)
-    return () => clearInterval(id)
-  }, [])
+function LiveCounter({ count }: { count: number }) {
   return (
     <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-md"
       style={{ background: 'var(--surface-2)', border: '1px solid rgba(255,255,255,0.04)' }}>
       <span className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse" />
-      <span className="text-[10px] font-mono text-zinc-500 tabular-nums">{n.toLocaleString()}</span>
+      <span className="text-[10px] font-mono text-zinc-500 tabular-nums">{count.toLocaleString()}</span>
       <span className="text-[9px] text-zinc-400">calls</span>
     </div>
   )
@@ -1705,7 +1701,7 @@ export default function Dashboard() {
           <LanguageToggle />
           <ThemeToggle />
           <button onClick={() => setShowShortcuts(true)} className="w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-bold text-[var(--muted)] border border-[var(--border)] hover:text-[var(--foreground)] hover:bg-[var(--surface-2)] transition-colors">?</button>
-          <LiveCounter />
+          <LiveCounter count={tips.length} />
             <a href="/math" target="_blank" rel="noopener"
               className="hidden md:flex items-center gap-1.5 text-[10px] font-semibold uppercase px-3 py-1.5 rounded-md border transition-all tracking-widest border-purple-500/60 text-purple-400 bg-purple-950/20 hover:bg-purple-950/40 hover:border-purple-500">
               <span>∑</span>Math
@@ -1765,24 +1761,15 @@ export default function Dashboard() {
                     Pricing
                   </button>
                 </div>
-                <div className="flex flex-col gap-3" style={{ paddingBottom: '1.25rem', borderBottom: '1px solid var(--border)' }}>
-                  {/* Top urgency row */}
-                  <div className="flex gap-4">
-                    <Stat label="Action Needed" value={actionNeeded} red sub="high+ unresolved" />
-                    <Stat label="Escalating"    value={escalating}   red={escalating > 0} sub="imminent risk" />
-                  </div>
-                  {/* Second row */}
-                  <div className="flex gap-4">
-                    <Stat label="This Week" value={thisWeek}   sub="reports filed" />
-                    <Stat label="Weapons"   value={weaponCount} red={weaponCount > 0} sub="threat type" />
-                  </div>
-                  {/* Third row */}
-                  <div className="flex gap-4">
-                    <Stat label="Schools"   value={schoolsAffected} sub="monitored" />
-                    <Stat label="Multilingual" value={multilingualCount} sub="non-English calls" />
-                  </div>
-                  {/* Response time highlight */}
-                  <div className="rounded-lg px-3 py-2 flex items-center justify-between"
+                <div className="grid grid-cols-2 gap-x-4 gap-y-3" style={{ paddingBottom: '1.25rem', borderBottom: '1px solid var(--border)' }}>
+                  <Stat label="Action Needed" value={actionNeeded}       red              sub="high+ unresolved" />
+                  <Stat label="Escalating"    value={escalating}         red={escalating > 0} sub="imminent risk" />
+                  <Stat label="This Week"     value={thisWeek}                            sub="reports filed" />
+                  <Stat label="Weapons"       value={weaponCount}        red={weaponCount > 0} sub="threat type" />
+                  <Stat label="Schools"       value={schoolsAffected}                    sub="monitored" />
+                  <Stat label="Multilingual"  value={multilingualCount}                  sub="non-English calls" />
+                  {/* Response time highlight — spans both columns */}
+                  <div className="col-span-2 rounded-lg px-3 py-2 flex items-center justify-between"
                     style={{ background: 'rgba(6,182,212,0.07)', border: '1px solid rgba(6,182,212,0.2)' }}>
                     <span className="text-[9px] uppercase tracking-widest text-[var(--muted)]">Avg Triage</span>
                     <span className="text-lg font-black text-cyan-400 tabular-nums">8.2s</span>
@@ -1882,8 +1869,10 @@ export default function Dashboard() {
                     { k: 'weapon', l: 'Weapon' },
                   ].map(f => (
                     <button key={f.k} onClick={() => setFilter(f.k)}
-                      className={`px-3 py-1 rounded-full text-[10px] font-semibold uppercase tracking-wide transition-colors ${
-                        filter === f.k ? 'bg-[var(--foreground)] text-[var(--background)]' : 'text-[var(--muted)] hover:text-[var(--foreground)]'
+                      className={`px-3 py-1 rounded-full text-[10px] font-semibold uppercase tracking-wide transition-colors border ${
+                        filter === f.k
+                          ? 'bg-zinc-700 text-white border-zinc-500'
+                          : 'text-[var(--muted)] border-transparent hover:text-[var(--foreground)] hover:border-zinc-700'
                       }`}>
                       {f.dot && <span className={f.dot}>• </span>}{f.l}
                     </button>
@@ -1927,7 +1916,7 @@ export default function Dashboard() {
         {/* ── Tab: GPS Threat Heatmap ── */}
         {activeTab === 'heatmap' && (
           <div className="relative z-10 flex-1 min-h-0 overflow-hidden">
-            <ThreatHeatmap tips={tips} />
+            <ThreatHeatmap tips={realTips} />
           </div>
         )}
 
