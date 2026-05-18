@@ -20,7 +20,7 @@ import {
   IconWeapon, IconBullying, IconDrugs, IconThreat, IconSelfHarm,
   IconVandalism, IconHarassment, IconFile, IconGrid, IconEye, IconFlow,
   IconGlobe, IconSearch, IconBrain, IconSparkle, IconDatabase,
-  IconCloud, IconDna, IconPhone, IconMail, IconCreditCard,
+  IconDna, IconPhone, IconMail, IconCreditCard,
 } from '@/components/Icons'
 
 // ─── Constants ────────────────────────────────────────────────────────────────
@@ -71,9 +71,7 @@ const SPONSORS = [
   { name: 'AgentMail',       role: 'Email Briefs',       color: '#8b5cf6' },
   { name: 'Supermemory',     role: 'Pattern Memory',     color: '#f59e0b' },
   { name: 'Moss',            role: 'Semantic Search',    color: '#6366f1' },
-  { name: 'Stripe',          role: 'District Billing',   color: '#ec4899' },
   { name: 'Sponge',          role: 'Micropayments',      color: '#14b8a6' },
-  { name: 'AWS',             role: 'Call Archive',       color: '#ff9900' },
   { name: 'Supabase',        role: 'Realtime DB',        color: '#10b981' },
 ]
 
@@ -83,11 +81,10 @@ const PIPELINE_STEPS: { id: string; label: string; icon: React.ReactNode; desc: 
   { id: 'claude',      label: 'Claude',      icon: <IconBrain size={14} />,    desc: 'Threat classify',     ms: 2400 },
   { id: 'gemini',      label: 'Gemini',      icon: <IconSparkle size={14} />,  desc: 'Consensus verify',    ms: 3100 },
   { id: 'supabase',    label: 'Supabase',    icon: <IconDatabase size={14} />, desc: 'Log to dashboard',    ms: 3400 },
-  { id: 'aws',         label: 'AWS S3',      icon: <IconCloud size={14} />,    desc: 'Archive transcript',  ms: 3700 },
-  { id: 'memory',      label: 'Memory',      icon: <IconDna size={14} />,      desc: 'Pattern storage',     ms: 4100 },
-  { id: 'twilio',      label: 'Twilio',      icon: <IconPhone size={14} />,    desc: 'SMS to principal',    ms: 4600 },
-  { id: 'agentmail',   label: 'AgentMail',   icon: <IconMail size={14} />,     desc: 'Email brief',         ms: 5200 },
-  { id: 'stripe',      label: 'Stripe',      icon: <IconCreditCard size={14} />, desc: 'Bill district',     ms: 5800 },
+  { id: 'memory',      label: 'Memory',      icon: <IconDna size={14} />,      desc: 'Pattern storage',     ms: 3800 },
+  { id: 'twilio',      label: 'Twilio',      icon: <IconPhone size={14} />,    desc: 'SMS to principal',    ms: 4300 },
+  { id: 'agentmail',   label: 'AgentMail',   icon: <IconMail size={14} />,     desc: 'Email brief',         ms: 4900 },
+  { id: 'sponge',      label: 'Sponge',      icon: <IconCreditCard size={14} />, desc: 'Log micropayment',  ms: 5400 },
 ]
 
 // Demo: realistic anonymous call, no names/identifying info
@@ -352,9 +349,7 @@ function IntegrationStatus() {
     { name: 'AgentMail', key: 'agentmail' },
     { name: 'Supermemory', key: 'supermemory' },
     { name: 'Moss', key: 'moss' },
-    { name: 'Stripe', key: 'stripe' },
     { name: 'Sponge', key: 'sponge' },
-    { name: 'AWS S3', key: 'aws' },
     { name: 'Supabase', key: 'supabase' },
   ]
 
@@ -396,7 +391,7 @@ function CostTracker() {
     { label: 'Gemini Flash', cost: 0.0003, color: 'text-blue-400' },
     { label: 'AgentMail',    cost: 0.0010, color: 'text-purple-500' },
     { label: 'SMS (Twilio)', cost: 0.0075, color: 'text-red-500' },
-    { label: 'AWS S3',       cost: 0.0001, color: 'text-yellow-600' },
+    { label: 'Sponge',       cost: 0.0003, color: 'text-teal-500' },
   ]
   const total = costs.reduce((s, c) => s + c.cost, 0)
   return (
@@ -414,7 +409,7 @@ function CostTracker() {
         ))}
       </div>
       <div className="mt-1.5 pt-1.5 border-t text-[8px] text-zinc-400" style={{ borderColor: 'var(--border)' }}>
-        District billed $0.15-0.35 per tip via Stripe · Sponge handles agent micropayments
+        District billed $0.15-0.35 per tip · Sponge handles agent micropayments
       </div>
     </div>
   )
