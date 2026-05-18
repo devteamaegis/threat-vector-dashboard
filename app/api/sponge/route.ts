@@ -19,7 +19,7 @@ const DEMO_DATA = {
 
 export async function GET() {
   try {
-    const r = await fetch(`${BACKEND}/api/sponge/wallet`, { next: { revalidate: 30 } })
+    const r = await fetch(`${BACKEND}/api/sponge/wallet`, { cache: 'no-store' })
     if (!r.ok) throw new Error('backend unreachable')
     return NextResponse.json(await r.json())
   } catch {

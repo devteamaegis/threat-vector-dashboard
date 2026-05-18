@@ -14,6 +14,7 @@ const LanguageToggle      = dynamic(() => import('@/components/LanguageToggle'),
 const PipelineView        = dynamic(() => import('@/components/PipelineView'),        { ssr: false })
 const ThreatBreakdownModal = dynamic(() => import('@/components/ThreatBreakdownModal'), { ssr: false })
 const SupermemoryPanel    = dynamic(() => import('@/components/SupermemoryPanel'),    { ssr: false })
+const SpongeWalletPanel   = dynamic(() => import('@/components/SpongeWalletPanel'),   { ssr: false })
 
 import {
   IconWeapon, IconBullying, IconDrugs, IconThreat, IconSelfHarm,
@@ -1327,7 +1328,7 @@ function SimulateSmsButton() {
 
 // ─── Main Dashboard ────────────────────────────────────────────────────────────
 
-type TabId = 'command' | 'intelligence' | 'pipeline' | 'heatmap'
+type TabId = 'command' | 'intelligence' | 'pipeline' | 'heatmap' | 'wallet'
 
 export default function Dashboard() {
   const { t } = useLang()
@@ -1678,6 +1679,7 @@ export default function Dashboard() {
               { id: 'intelligence', label: t('header.tab.graph'),    icon: <IconEye  size={12} /> },
               { id: 'pipeline',     label: t('header.tab.pipeline'), icon: <IconFlow size={12} /> },
               { id: 'heatmap',      label: t('header.tab.heatmap'),  icon: <IconGlobe size={12} /> },
+              { id: 'wallet',       label: 'Wallet',                 icon: <IconCreditCard size={12} /> },
             ] as { id: TabId; label: string; icon: React.ReactNode }[]).map(tab => (
               <button key={tab.id} onClick={() => setActiveTab(tab.id)}
                 className={`relative flex items-center gap-1.5 px-3 py-1 rounded-md text-[10px] font-semibold tracking-wide transition-all duration-200 ${
@@ -1926,6 +1928,13 @@ export default function Dashboard() {
         {activeTab === 'heatmap' && (
           <div className="relative z-10 flex-1 min-h-0 overflow-hidden">
             <ThreatHeatmap tips={tips} />
+          </div>
+        )}
+
+        {/* ── Tab: Sponge Agent Wallet ── */}
+        {activeTab === 'wallet' && (
+          <div className="relative z-10 flex-1 min-h-0 overflow-hidden">
+            <SpongeWalletPanel />
           </div>
         )}
 
