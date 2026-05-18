@@ -1375,7 +1375,23 @@ export default function Dashboard() {
         return [t, ...prev]
       })
       setFreshIds(prev => new Set([...prev, t.id]))
-      if (!demoIsRunning) { setOrbMode('speaking'); setTimeout(() => setOrbMode('idle'), 6000) }
+      if (!demoIsRunning) {
+        // Color-code orb by threat level: red = critical, amber = warning, green = safe
+        const level = t.threat_level ?? t.ai_triage_score ?? t.ai_score ?? 0
+        const urgency = t.urgency ?? ''
+        let resultMode: OrbMode
+        let holdMs: number
+        if (level >= 4 || urgency === 'critical') {
+          resultMode = 'critical'; holdMs = 10000
+        } else if (level >= 2 || urgency === 'high' || urgency === 'medium') {
+          resultMode = 'listening'; holdMs = 7000   // amber = potential threat
+        } else {
+          resultMode = 'attendance'; holdMs = 5000  // green = no threat
+        }
+        // Brief thinking flash (300ms) then reveal the verdict color
+        setOrbMode('thinking')
+        setTimeout(() => { setOrbMode(resultMode); setTimeout(() => setOrbMode('idle'), holdMs) }, 300)
+      }
       setTimeout(() => setFreshIds(f => { const n = new Set(f); n.delete(t.id); return n }), 8000)
     }
 
@@ -1397,8 +1413,10 @@ export default function Dashboard() {
           setLiveCall({ callId: d.call_id, transcript: d.words_so_far, probability: d.probability_pct, threatLevel: d.threat_level, school: d.school_name || 'Unknown School', features: d.top_features || [] })
           setOrbMode(d.threat_level >= 4 ? 'critical' : 'speaking')
         } else if (d.status === 'complete') {
-          const dismissDelay = (d.threat_level ?? 1) >= 4 ? 20000 : 8000
-          setTimeout(() => { setLiveCall(null); setOrbMode('idle') }, dismissDelay)
+          // Immediately collapse the live overlay and switch to thinking (blue pulse)
+          // while the AI pipeline finishes — handleNewTip will set the final color
+          setLiveCall(null)
+          setOrbMode('thinking')
         }
       })
       .subscribe()
@@ -1434,9 +1452,9 @@ export default function Dashboard() {
   useEffect(() => {
     if (loading) { setOrbMode('thinking'); return }
     if (demoRunning) return
-    // Orb only goes red during an active incoming call — not from existing tips in DB
-    setOrbMode('idle')
-  }, [loading, demoRunning, tips])
+    // Don't reset the orb if it's mid-analysis (thinking) or showing a threat result —
+    // handleNewTip + the live-call subscription own those transitions.
+  }, [loading, demoRunning])
 
   const clearTimers = () => { demoRef.current.forEach(clearTimeout); demoRef.current = [] }
 
@@ -1584,7 +1602,7 @@ export default function Dashboard() {
   }, [demoRunning, selected, filtered, runDemo])
 
   const ORB_LABEL: Record<OrbMode, string> = {
-    idle: 'STANDBY', listening: 'CALL ACTIVE', thinking: 'ANALYZING', speaking: 'INCOMING', critical: 'CRITICAL ALERT', attendance: 'ATTENDANCE',
+    idle: 'STANDBY', listening: 'THREAT DETECTED', thinking: 'ANALYZING', speaking: 'INCOMING', critical: 'CRITICAL ALERT', attendance: 'NO THREAT',
   }
   const ORB_COLOR: Record<OrbMode, string> = {
     idle: 'text-zinc-400', listening: 'text-orange-400', thinking: 'text-blue-400', speaking: 'text-cyan-400', critical: 'text-red-400', attendance: 'text-emerald-500',
@@ -1604,7 +1622,7 @@ export default function Dashboard() {
 
       <div className="fixed inset-0 flex flex-col overflow-hidden" style={{ background: 'var(--background)', fontFamily: 'var(--font-roboto-slab), "Roboto Slab", Georgia, serif' }}>
 
-        {liveCall && <LiveCallOverlay call={liveCall} onDismiss={() => { setLiveCall(null); setOrbMode('idle') }} />}
+        {liveCall && <LiveCallOverlay call={liveCall} onDismiss={() => { setLiveCall(null); setOrbMode('thinking') }} />}
         {analysisTip && (
           <ThreatBreakdownModal
             transcript={analysisTip.description ?? ''}
